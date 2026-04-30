@@ -231,43 +231,66 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Customers */}
               <div className="bg-white rounded-lg shadow p-5 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Customers by Revenue</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.topCustomers} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis type="number" tick={{ fontSize: 12 }} stroke="#6B7280" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                      <YAxis type="category" dataKey="customer" tick={{ fontSize: 11 }} stroke="#6B7280" width={120} />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                      <Bar dataKey="total" name="Revenue" fill="#3B82F6" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Customers</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {data.topCustomers.map((c, i) => {
+                    const pct = (c.total / data.overall.total) * 100;
+                    return (
+                      <a
+                        key={c.customer}
+                        href={`/?month=2026-04&type=all&customer=${encodeURIComponent(c.customer)}`}
+                        className="block p-3 border border-gray-200 rounded-lg hover:border-blue-400 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <span className="text-lg font-bold text-gray-400">#{i + 1}</span>
+                          <span className="text-sm font-semibold text-gray-900">{formatCurrency(c.total)}</span>
+                        </div>
+                        <p className="text-sm font-medium text-gray-800 truncate mb-1" title={c.customer}>
+                          {c.customer}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{pct.toFixed(1)}% of total</span>
+                          <span>{c.count} records</span>
+                        </div>
+                        <div className="mt-2 bg-gray-100 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-blue-500"
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                          />
+                        </div>
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Status Breakdown */}
               <div className="bg-white rounded-lg shadow p-5 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Records by Status</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={statusPieData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                        paddingAngle={2}
-                        dataKey="value"
-                        nameKey="name"
-                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">By Status</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {data.statusBreakdown.map((s, i) => {
+                    const pct = (s.count / data.overall.count) * 100;
+                    return (
+                      <a
+                        key={s.status}
+                        href={`/?month=2026-04&type=all&status=${encodeURIComponent(s.status || '')}`}
+                        className="block p-3 border border-gray-200 rounded-lg hover:border-blue-400 hover:shadow-md transition-all"
                       >
-                        {statusPieData?.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value, _name, props) => [`${value} records`, (props.payload as any).name]} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                          />
+                          <span className="text-sm font-medium text-gray-800 truncate">
+                            {s.status || 'Unknown'}
+                          </span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">{s.count.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">{formatCurrency(s.total)}</p>
+                        <p className="text-xs text-gray-400 mt-1">{pct.toFixed(1)}%</p>
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             </div>

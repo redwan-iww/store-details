@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import FilterBar from '@/components/FilterBar';
 import DataTable from '@/components/DataTable';
 import type { RecordType } from '@/lib/types';
@@ -84,8 +85,18 @@ export default function Home() {
 
       {/* Header / Banner */}
       <header role="banner" className="bg-white border-b px-6 py-4">
-        <h1 className="text-xl font-semibold text-gray-900">Store Data Viewer</h1>
-        <p className="text-sm text-gray-600 mt-0.5">7 years of Zoho store data — filter by month, service, product, or customer</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Store Data Viewer</h1>
+            <p className="text-sm text-gray-600 mt-0.5">7 years of Zoho store data — filter by month, service, product, or customer</p>
+          </div>
+          <Link
+            href="/analytics"
+            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-300 rounded-lg hover:bg-blue-50"
+          >
+            Analytics
+          </Link>
+        </div>
       </header>
 
       {/* Main Content */}
