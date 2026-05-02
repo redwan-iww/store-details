@@ -9,8 +9,9 @@ export async function GET(request: NextRequest) {
   const customer = searchParams.get('customer') || undefined;
   const status = searchParams.get('status') || undefined;
 
-  if (!month) {
-    return NextResponse.json({ error: 'month is required' }, { status: 400 });
+  // month is optional when customer or status is provided
+  if (!month && !customer && !status) {
+    return NextResponse.json({ error: 'month or customer is required' }, { status: 400 });
   }
 
   if (type && !['all', 'service', 'product'].includes(type)) {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   const filters: DataFilters = {
-    month,
+    month: month || undefined,
     type: type || 'all',
     customer,
     status,
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
   const result = getTransactions(filters);
 
   return NextResponse.json({
-    month,
+    month: month || 'all',
     type: filters.type,
     customer,
     status,

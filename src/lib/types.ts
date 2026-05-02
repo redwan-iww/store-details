@@ -29,7 +29,7 @@ export interface TransactionInput {
 }
 
 export interface DataFilters {
-  month: string;
+  month?: string;
   type: 'all' | RecordType;
   customer?: string;
   status?: string;
@@ -52,7 +52,19 @@ export interface UploadResponse {
   skipped: number;
 }
 
-export const CSV_CONFIG = {
+export interface CSVConfigEntry {
+  type: RecordType;
+  typeByField?: Record<string, RecordType>;
+  idField?: string;
+  idFields?: string[];
+  dateField: string;
+  amountFields: string[];
+  customerFields: string[];
+  descriptionField: string;
+  statusField: string;
+}
+
+export const CSV_CONFIG: Record<string, CSVConfigEntry> = {
   Books_Invoice: {
     type: 'service' as RecordType,
     idField: 'Invoice Number',
@@ -73,6 +85,7 @@ export const CSV_CONFIG = {
   },
   Store_Subscriptions: {
     type: 'product' as RecordType,
+    typeByField: { 'Zoho': 'service' as RecordType },
     idField: 'Subscription ID',
     dateField: 'Subscription Start Date',
     amountFields: ['Total Revenue', 'Next Recurring Amount'],
@@ -98,6 +111,6 @@ export const CSV_CONFIG = {
     descriptionField: 'Service Name',
     statusField: 'Status',
   },
-} as const;
+};
 
 export type CSVSource = keyof typeof CSV_CONFIG;

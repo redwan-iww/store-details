@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import HomeContent from '@/components/HomeContent';
 import type { RecordType } from '@/lib/types';
 
-export default function AnalyticsPage() {
+function DataPageContent() {
+  const searchParams = useSearchParams();
   const [currentMonth, setCurrentMonth] = useState<string>(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -19,23 +21,18 @@ export default function AnalyticsPage() {
   const [summary, setSummary] = useState<{ totalAmount: number; count: number }>({ totalAmount: 0, count: 0 });
   const [loading, setLoading] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ month: currentMonth, type: currentType });
-      if (selectedCustomer) params.set('customer', selectedCustomer);
-      if (selectedStatus) params.set('status', selectedStatus);
+  const customerParam = searchParams.get('customer') || '';
+  const statusParam = searchParams.get('status') || '';
 
-      const res = await fetch(`/api/data?${params}`);
-      const data = await res.json();
-      setRecords(data.records || []);
-      setSummary(data.summary || { totalAmount: 0, count: 0 });
-    } catch (err) {
-      console.error('Failed to fetch data:', err);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (customerParam && statusParam) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('status');
+      window.history.replaceState({}, '', url.toString());
     }
-  }, [currentMonth, currentType, selectedCustomer, selectedStatus]);
+    setSelectedCustomer(customerParam);
+    setSelectedStatus(customerParam ? '' : statusParam);
+  }, [customerParam, statusParam]);
 
   const fetchCustomers = useCallback(async (type: 'all' | RecordType) => {
     try {
@@ -57,32 +54,78 @@ export default function AnalyticsPage() {
     }
   }, []);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedCustomer) {
+        params.set('customer', selectedCustomer);
+      } else if (selectedStatus) {
+        params.set('status', selectedStatus);
+      } else {
+        params.set('month', currentMonth);
+        params.set('type', currentType);
+      }
+
+      const res = await fetch(`/api/data?${params}`);
+      const data = await res.json();
+      setRecords(data.records || []);
+      setSummary(data.summary || { totalAmount: 0, count: 0 });
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentMonth, currentType, selectedCustomer, selectedStatus]);
+
   useEffect(() => {
     fetchCustomers(currentType);
     fetchStatuses(currentType);
-    setSelectedCustomer('');
-    setSelectedStatus('');
   }, [currentType, fetchCustomers, fetchStatuses]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  const clearFilters = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('customer');
+    url.searchParams.delete('status');
+    window.history.replaceState({}, '', url.toString());
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">Store Data Viewer</h1>
-            <p className="text-sm text-gray-600 mt-0.5">7 years of Zoho store data — filter by month, service, product, or customer</p>
+            <h1 className="text-xl font-semibold text-gray-900">
+              {selectedCustomer ? `Customer: ${selectedCustomer}` : selectedStatus ? `Status: ${selectedStatus}` : 'Store Data Viewer'}
+            </h1>
+            <p className="text-sm text-gray-600 mt-0.5">
+              {selectedCustomer
+                ? `Showing all transactions for ${selectedCustomer}`
+                : selectedStatus
+                ? `Showing all transactions with status ${selectedStatus}`
+                : '7 years of Zoho store data — filter by month, service, product, or customer'}
+            </p>
           </div>
-          <Link
-            href="/"
-            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-300 rounded-lg hover:bg-blue-50"
-          >
-            View Analytics
-          </Link>
+          <div className="flex items-center gap-3">
+            {(selectedCustomer || selectedStatus) && (
+              <button
+                onClick={clearFilters}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Clear Filter
+              </button>
+            )}
+            <Link
+              href="/"
+              className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-300 rounded-lg hover:bg-blue-50"
+            >
+              View Analytics
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -101,8 +144,21 @@ export default function AnalyticsPage() {
           onTypeChange={setCurrentType}
           onCustomerChange={setSelectedCustomer}
           onStatusChange={setSelectedStatus}
+          hideMonthFilter={!!selectedCustomer || !!selectedStatus}
         />
       </main>
     </div>
+  );
+}
+
+export default function DataPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <DataPageContent />
+    </Suspense>
   );
 }

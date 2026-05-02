@@ -19,6 +19,7 @@ interface HomeContentProps {
   onTypeChange: (type: 'all' | RecordType) => void;
   onCustomerChange: (customer: string) => void;
   onStatusChange: (status: string) => void;
+  hideMonthFilter?: boolean;
 }
 
 export default function HomeContent({

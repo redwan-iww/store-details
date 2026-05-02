@@ -21,6 +21,8 @@ export default function DataTable({ records, type }: DataTableProps) {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const totalAmount = records.reduce((sum, r) => sum + (r.amount || 0), 0);
+
   if (records.length === 0) {
     return (
       <div role="status" aria-live="polite" className="text-center py-12 text-gray-500">
@@ -80,6 +82,13 @@ export default function DataTable({ records, type }: DataTableProps) {
             </tr>
           ))}
         </tbody>
+        <tfoot className="bg-gray-100">
+          <tr>
+            <td colSpan={3} className="px-4 py-3 text-sm font-semibold text-gray-700">Total ({records.length} records)</td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">{formatAmount(totalAmount)}</td>
+            <td colSpan={2} />
+          </tr>
+        </tfoot>
       </table>
     </div>
   );

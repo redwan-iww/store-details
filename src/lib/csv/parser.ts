@@ -76,8 +76,15 @@ export function parseCSV(source: CSVSource, csvContent: string): { inserted: num
   let skipped = 0;
 
   for (const row of records.data) {
-    const id = generateId(source, row);
-    const date = extractDate(source, row);
+    // Check if this row belongs to a different source based on Business Category
+    let effectiveSource = source;
+    if (source === 'Store_Subscriptions' && row['Business Category'] === 'Zoho') {
+      effectiveSource = 'Store_Commissions';
+    }
+
+    const effectiveConfig = CSV_CONFIG[effectiveSource];
+    const id = generateId(effectiveSource, row);
+    const date = extractDate(effectiveSource, row);
 
     if (!id || !date) {
       skipped++;
@@ -86,15 +93,15 @@ export function parseCSV(source: CSVSource, csvContent: string): { inserted: num
 
     const input: TransactionInput = {
       id,
-      type: config.type,
-      source_file: source,
+      type: effectiveConfig.type,
+      source_file: effectiveSource,
       date,
       month: extractMonth(date),
-      customer: extractCustomer(source, row),
-      description: extractDescription(source, row),
-      amount: extractAmount(source, row),
+      customer: extractCustomer(effectiveSource, row),
+      description: extractDescription(effectiveSource, row),
+      amount: extractAmount(effectiveSource, row),
       currency: 'USD',
-      status: extractStatus(source, row),
+      status: extractStatus(effectiveSource, row),
       raw_data: row,
     };
 

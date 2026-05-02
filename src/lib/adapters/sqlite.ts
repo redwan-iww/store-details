@@ -64,8 +64,13 @@ export function upsertTransaction(input: TransactionInput): void {
 export function getTransactions(filters: DataFilters): { records: Transaction[]; summary: { totalAmount: number; count: number } } {
   const database = getDb();
 
-  let sql = `SELECT * FROM transactions WHERE month = ?`;
-  const params: (string | undefined)[] = [filters.month];
+  let sql = `SELECT * FROM transactions WHERE 1=1`;
+  const params: (string | undefined)[] = [];
+
+  if (filters.month) {
+    sql += ` AND month = ?`;
+    params.push(filters.month);
+  }
 
   if (filters.type !== 'all') {
     sql += ` AND type = ?`;

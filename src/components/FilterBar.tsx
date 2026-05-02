@@ -13,6 +13,7 @@ interface FilterBarProps {
   statuses: string[];
   selectedStatus: string;
   onStatusChange: (status: string) => void;
+  hideMonthFilter?: boolean;
 }
 
 export default function FilterBar({
@@ -26,6 +27,7 @@ export default function FilterBar({
   statuses,
   selectedStatus,
   onStatusChange,
+  hideMonthFilter,
 }: FilterBarProps) {
   const [inputValue, setInputValue] = useState(currentMonth);
 
@@ -65,43 +67,47 @@ export default function FilterBar({
       <h2 className="sr-only">Filter Controls</h2>
 
       {/* Month Navigation Group */}
-      <div role="group" aria-labelledby="month-nav-label" className="flex items-center gap-2">
-        <span id="month-nav-label" className="text-sm font-semibold text-gray-800 mr-1">Month</span>
-        <button
-          onClick={goToPrevMonth}
-          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[70px]"
-        >
-          Prev
-        </button>
-        <span
-          role="status"
-          aria-live="polite"
-          className="font-semibold min-w-[150px] text-center text-gray-900 text-base"
-        >
-          {formatMonthDisplay(currentMonth)}
-        </span>
-        <button
-          onClick={goToNextMonth}
-          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[70px]"
-        >
-          Next
-        </button>
-      </div>
+      {!hideMonthFilter && (
+        <div role="group" aria-labelledby="month-nav-label" className="flex items-center gap-2">
+          <span id="month-nav-label" className="text-sm font-semibold text-gray-800 mr-1">Month</span>
+          <button
+            onClick={goToPrevMonth}
+            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[70px]"
+          >
+            Prev
+          </button>
+          <span
+            role="status"
+            aria-live="polite"
+            className="font-semibold min-w-[150px] text-center text-gray-900 text-base"
+          >
+            {formatMonthDisplay(currentMonth)}
+          </span>
+          <button
+            onClick={goToNextMonth}
+            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[70px]"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Month Picker */}
-      <div className="flex items-center gap-3">
-        <label htmlFor="month-picker" className="text-sm font-semibold text-gray-800">Jump to</label>
-        <input
-          id="month-picker"
-          type="month"
-          value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            onMonthChange(e.target.value);
-          }}
-          className="px-3 py-2 border border-gray-300 rounded font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-        />
-      </div>
+      {!hideMonthFilter && (
+        <div className="flex items-center gap-3">
+          <label htmlFor="month-picker" className="text-sm font-semibold text-gray-800">Jump to</label>
+          <input
+            id="month-picker"
+            type="month"
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              onMonthChange(e.target.value);
+            }}
+            className="px-3 py-2 border border-gray-300 rounded font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          />
+        </div>
+      )}
 
       {/* Type Toggle */}
       <div role="group" aria-labelledby="type-filter-label" className="flex items-center gap-2">
