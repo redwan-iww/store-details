@@ -54,7 +54,6 @@ export interface UploadResponse {
 
 export interface CSVConfigEntry {
   type: RecordType;
-  typeByField?: Record<string, RecordType>;
   idField?: string;
   idFields?: string[];
   dateField: string;
@@ -85,10 +84,9 @@ export const CSV_CONFIG: Record<string, CSVConfigEntry> = {
   },
   Store_Subscriptions: {
     type: 'product' as RecordType,
-    typeByField: { 'Zoho': 'service' as RecordType },
     idField: 'Subscription ID',
     dateField: 'Subscription Start Date',
-    amountFields: ['Total Revenue', 'Next Recurring Amount'],
+    amountFields: ['Total  Revenue', 'Next  Recurring Amount'],
     customerFields: ['Customer Company Name'],
     descriptionField: 'Plan Name',
     statusField: 'Status',
@@ -97,7 +95,7 @@ export const CSV_CONFIG: Record<string, CSVConfigEntry> = {
     type: 'product' as RecordType,
     idField: 'Transaction ID',
     dateField: 'Transaction Date',
-    amountFields: ['Transaction Amount'],
+    amountFields: ['Commission Amount'],
     customerFields: ['Customer Company Name'],
     descriptionField: 'Description',
     statusField: 'Transaction Type',

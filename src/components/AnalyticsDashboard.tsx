@@ -51,11 +51,8 @@ const formatCurrency = (value: number) => {
 };
 
 const formatMonth = (month: string) => {
-  const [year, m] = month.split('-');
-  return new Date(parseInt(year), parseInt(m) - 1).toLocaleDateString('en-US', {
-    month: 'short',
-    year: '2-digit',
-  });
+  const [y, m] = month.split('-');
+  return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
 };
 
 const METHOD_LABELS: Record<ForecastMethod, string> = {
@@ -82,34 +79,42 @@ export default function AnalyticsDashboard({
 }: AnalyticsDashboardProps) {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [yearIdx, setYearIdx] = useState(Infinity);
   const router = useRouter();
 
-  const monthlyChartData = data?.monthly.reduce((acc: Record<string, unknown>[], row) => {
-    const existing = acc.find((r) => r.month === row.month);
+  const { monthsByYear, yearsWithData } = data?.monthly.reduce<{ monthsByYear: Record<string, Record<string, unknown>[]>; yearsWithData: Set<string> }>((acc, row) => {
+    const y = row.month.substring(0, 4);
+    if (!acc.monthsByYear[y]) acc.monthsByYear[y] = [];
+    const m = parseInt(row.month.substring(5, 7));
+    let entry = acc.monthsByYear[y].find((e) => e.monthNum === m);
     const isForecast = row.type === 'forecast';
-    if (existing) {
+    if (!isForecast) acc.yearsWithData.add(y);
+    if (entry) {
       if (isForecast) {
-        existing.forecastTotal = (existing.forecastTotal as number || 0) + row.total;
+        entry.forecastTotal = (entry.forecastTotal as number || 0) + row.total;
       } else {
-        existing[row.type] = row.total;
-        existing[`${row.type}Count`] = row.count;
+        entry[row.type] = (entry[row.type] as number || 0) + row.total;
+        entry[`${row.type}Count`] = (entry[`${row.type}Count`] as number || 0) + row.count;
       }
     } else {
-      const entry: Record<string, unknown> = {
-        month: row.month,
-        monthLabel: formatMonth(row.month),
-        isForecast,
-      };
+      entry = { monthNum: m, month: row.month, monthLabel: formatMonth(row.month) };
       if (isForecast) {
         entry.forecastTotal = row.total;
       } else {
         entry[row.type] = row.total;
         entry[`${row.type}Count`] = row.count;
       }
-      acc.push(entry);
+      acc.monthsByYear[y].push(entry);
     }
     return acc;
-  }, []);
+  }, { monthsByYear: {}, yearsWithData: new Set<string>() }) ?? { monthsByYear: {}, yearsWithData: new Set<string>() };
+
+  const yearKeys = Object.keys(monthsByYear).sort();
+  const defaultYear = [...yearsWithData].sort().pop() || yearKeys[0] || '';
+  const initialYearIdx = yearKeys.indexOf(defaultYear);
+  const safeYearIdx = isFinite(yearIdx) ? Math.min(yearIdx, Math.max(0, yearKeys.length - 1)) : initialYearIdx;
+  const currentYear = yearKeys[safeYearIdx] || '';
+  const monthlyChartData = currentYear ? (monthsByYear[currentYear] || []).sort((a, b) => (a.monthNum as number) - (b.monthNum as number)) : [];
 
   const pieData = data?.typeSplit.map((t) => ({
     name: t.type.charAt(0).toUpperCase() + t.type.slice(1),
@@ -181,40 +186,49 @@ export default function AnalyticsDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Monthly Revenue Trend */}
         <div className="bg-white rounded-lg shadow p-5 border border-gray-200">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
             <h3 className="text-lg font-semibold text-gray-900">Monthly Revenue Trend</h3>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Data:</span>
-                <div className="flex rounded overflow-hidden border border-gray-300">
-                  {(['all', '12m'] as ForecastScope[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => onForecastScopeChange(s)}
-                      className={`px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500 ${
-                        forecastScope === s ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {s === 'all' ? 'All Time' : 'Last 12M'}
-                    </button>
-                  ))}
+            <div className="flex items-center gap-1">
+              {yearKeys.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setYearIdx((p) => Math.max(0, p - 1))} disabled={safeYearIdx === 0} className="px-2 py-1 text-xs font-medium border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">←</button>
+                  <span className="text-sm font-semibold text-gray-700 px-2">{currentYear}</span>
+                  <button onClick={() => setYearIdx((p) => Math.min(yearKeys.length - 1, p + 1))} disabled={safeYearIdx >= yearKeys.length - 1} className="px-2 py-1 text-xs font-medium border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">→</button>
                 </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mb-4 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500">Data:</span>
+              <div className="flex rounded overflow-hidden border border-gray-300">
+                {(['all', '12m'] as ForecastScope[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => onForecastScopeChange(s)}
+                    className={`px-3 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500 ${
+                      forecastScope === s ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {s === 'all' ? 'All Time' : 'Last 12M'}
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Method:</span>
-                <div className="flex rounded overflow-hidden border border-gray-300">
-                  {(['trend', 'moving_avg', 'growth_rate'] as ForecastMethod[]).map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => onForecastMethodChange(m)}
-                      className={`px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500 ${
-                        forecastMethod === m ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {METHOD_LABELS[m]}
-                    </button>
-                  ))}
-                </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500">Method:</span>
+              <div className="flex rounded overflow-hidden border border-gray-300">
+                {(['trend', 'moving_avg', 'growth_rate'] as ForecastMethod[]).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => onForecastMethodChange(m)}
+                    className={`px-3 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500 ${
+                      forecastMethod === m ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {METHOD_LABELS[m]}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

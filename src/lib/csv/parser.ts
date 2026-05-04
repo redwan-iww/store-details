@@ -78,7 +78,7 @@ export function parseCSV(source: CSVSource, csvContent: string): { inserted: num
   for (const row of records.data) {
     // Check if this row belongs to a different source based on Business Category
     let effectiveSource = source;
-    if (source === 'Store_Subscriptions' && row['Business Category'] === 'Zoho') {
+    if (source === 'Store_Subscriptions' && row['Business Category'] === 'zoho') {
       effectiveSource = 'Store_Commissions';
     }
 

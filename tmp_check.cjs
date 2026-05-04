@@ -1,0 +1,11 @@
+const Database = require('better-sqlite3');
+const db = new Database('store.db');
+const years = db.prepare("SELECT DISTINCT substr(month,1,4) as yr FROM transactions ORDER BY yr").all();
+console.log('years:', years.map(r => r.yr));
+const count = db.prepare("SELECT COUNT(*) as c FROM transactions").get();
+console.log('total rows:', count.c);
+const sources = db.prepare("SELECT source_file, COUNT(*) as c FROM transactions GROUP BY source_file").all();
+console.log('by source:', sources);
+const forecastMonths = db.prepare("SELECT DISTINCT month FROM transactions WHERE type='forecast' ORDER BY month").all();
+console.log('forecast months:', forecastMonths.map(r => r.month));
+db.close();

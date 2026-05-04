@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
     monthlyParams.push(filterType);
   }
 
-  monthlyQuery += ` GROUP BY month, type ORDER BY month DESC LIMIT 48`;
+  monthlyQuery += ` GROUP BY month, type ORDER BY month DESC`;
 
   const monthlyRows = db.prepare(monthlyQuery).all(...monthlyParams) as MonthlyRow[];
 
