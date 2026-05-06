@@ -4,9 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 
-type ForecastMethod = 'trend' | 'moving_avg' | 'growth_rate';
-type ForecastScope = 'all' | '12m';
-
 interface AnalyticsData {
   monthly: { month: string; type: string; total: number; count: number }[];
   topCustomers: { customer: string; total: number; count: number }[];
@@ -19,22 +16,20 @@ export default function Home() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<'all' | 'service' | 'product'>('all');
-  const [forecastMethod, setForecastMethod] = useState<ForecastMethod>('trend');
-  const [forecastScope, setForecastScope] = useState<ForecastScope>('all');
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/analytics?type=${typeFilter}&method=${forecastMethod}&scope=${forecastScope}`)
+    fetch(`/api/analytics?type=${typeFilter}`)
       .then((res) => res.json())
       .then((d) => {
         setData(d);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [typeFilter, forecastMethod, forecastScope]);
+  }, [typeFilter]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" suppressHydrationWarning>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded focus:z-50 focus:outline-none focus:ring-4 focus:ring-blue-300"
@@ -63,10 +58,6 @@ export default function Home() {
           loading={loading}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
-          forecastMethod={forecastMethod}
-          onForecastMethodChange={setForecastMethod}
-          forecastScope={forecastScope}
-          onForecastScopeChange={setForecastScope}
         />
       </main>
     </div>

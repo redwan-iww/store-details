@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/adapters/sqlite';
+import fs from 'fs';
+import path from 'path';
+import Papa from 'papaparse';
 
 type ForecastMethod = 'trend' | 'moving_avg' | 'growth_rate';
 type ForecastScope = 'all' | '12m';

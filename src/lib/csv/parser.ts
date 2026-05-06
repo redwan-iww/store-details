@@ -76,6 +76,16 @@ export function parseCSV(source: CSVSource, csvContent: string): { inserted: num
   let skipped = 0;
 
   for (const row of records.data) {
+    // Skip test data (instawebworks.com.au domain)
+    if (source === 'Extension_Users') {
+      const email = row['Email'] || '';
+      const secondaryEmail = row['Secondary Email'] || '';
+      if (email.includes('instawebworks.com.au') || secondaryEmail.includes('instawebworks.com.au')) {
+        skipped++;
+        continue;
+      }
+    }
+
     // Check if this row belongs to a different source based on Business Category
     let effectiveSource = source;
     if (source === 'Store_Subscriptions' && row['Business Category'] === 'zoho') {
