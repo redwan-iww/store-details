@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { formatCurrency, DEFAULT_EXCHANGE_RATES, type CurrencyBreakdown } from '@/lib/currency';
+import { CurrencySummaryWithConversion, CurrencyBreakdownList, CurrencyConverterToggle, ExchangeRateModal } from '@/components/CurrencyUI';
 
-// Dynamically import ChurnMetrics with SSR disabled to prevent hydration errors
 const ChurnMetrics = dynamic(() => import('./ChurnMetrics'), {
   ssr: false,
   loading: () => (
@@ -17,10 +18,11 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 
 interface AnalyticsData {
   monthly: { month: string; type: string; total: number; count: number }[];
-  topCustomers: { customer: string; total: number; count: number }[];
-  statusBreakdown: { status: string; count: number; total: number }[];
-  typeSplit: { type: string; total: number; count: number }[];
+  topCustomers: { customer: string; total: number; count: number; currencies: CurrencyBreakdown[] }[];
+  statusBreakdown: { status: string; count: number; total: number; currencies: CurrencyBreakdown[] }[];
+  typeSplit: { type: string; currency: string; total: number; count: number }[];
   overall: { total: number; count: number };
+  overallByCurrency: { currency: string; total: number; count: number }[];
 }
 
 interface AnalyticsDashboardProps {
@@ -30,14 +32,6 @@ interface AnalyticsDashboardProps {
   onTypeFilterChange: (filter: 'all' | 'service' | 'product') => void;
 }
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-};
-
 export default function AnalyticsDashboard({
   data,
   loading,
@@ -46,6 +40,9 @@ export default function AnalyticsDashboard({
 }: AnalyticsDashboardProps) {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [convertToUsd, setConvertToUsd] = useState(true);
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_EXCHANGE_RATES);
+  const [showRateEditor, setShowRateEditor] = useState(false);
 
   if (loading) {
     return (
@@ -84,6 +81,33 @@ export default function AnalyticsDashboard({
         <ChurnMetrics />
       </div>
 
+      {/* Currency Overview */}
+      {data.overallByCurrency && data.overallByCurrency.length > 0 && (
+        <div className="mb-6 bg-white rounded-lg shadow p-5 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Revenue by Currency</h3>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowRateEditor(true)}
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+              >
+                Edit rates
+              </button>
+              <CurrencyConverterToggle enabled={convertToUsd} onToggle={setConvertToUsd} />
+            </div>
+          </div>
+          <CurrencySummaryWithConversion currencies={data.overallByCurrency} convertToUsd={convertToUsd} rates={exchangeRates} />
+        </div>
+      )}
+
+      <ExchangeRateModal
+        rates={exchangeRates}
+        onRatesChange={setExchangeRates}
+        currencies={data.overallByCurrency.map(c => c.currency)}
+        open={showRateEditor}
+        onClose={() => setShowRateEditor(false)}
+      />
+
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Customers */}
@@ -92,6 +116,7 @@ export default function AnalyticsDashboard({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {data.topCustomers.map((c, i) => {
               const pct = (c.total / data.overall.total) * 100;
+              const primaryCurrency = c.currencies?.[0]?.currency || 'USD';
               return (
                 <div key={c.customer} className="p-3 border border-gray-200 rounded-lg hover:border-blue-400 transition-all">
                   <button
@@ -100,14 +125,15 @@ export default function AnalyticsDashboard({
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <span className="text-lg font-bold text-gray-400">#{i + 1}</span>
-                      <span className="text-sm font-semibold text-gray-900">{formatCurrency(c.total)}</span>
+                      <span className="text-sm font-semibold text-gray-900">{formatCurrency(c.total, primaryCurrency, convertToUsd, exchangeRates)}</span>
                     </div>
                     <p className="text-sm font-medium text-gray-800 truncate mb-1" title={c.customer}>
                       {c.customer}
                     </p>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{pct.toFixed(1)}% of total</span>
-                      <span>{c.count} records</span>
+                    <CurrencyBreakdownList currencies={c.currencies} inline convertToUsd={convertToUsd} rates={exchangeRates} />
+                    <div className="flex items-center justify-between text-sm text-gray-600 mt-1">
+                      <span className="font-medium">{pct.toFixed(1)}% of total</span>
+                      <span className="font-medium">{c.count} records</span>
                     </div>
                     <div className="mt-2 bg-gray-100 rounded-full h-1.5">
                       <div
@@ -124,8 +150,8 @@ export default function AnalyticsDashboard({
                       >
                         View in Data Page
                       </a>
-                      <p className="text-xs text-gray-500 text-center">
-                        {c.count} transactions totaling {formatCurrency(c.total)}
+                      <p className="text-sm font-medium text-gray-600 text-center">
+                        {c.count} transactions
                       </p>
                     </div>
                   )}
@@ -158,8 +184,8 @@ export default function AnalyticsDashboard({
                       </span>
                     </div>
                     <p className="text-lg font-bold text-gray-900">{s.count.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{formatCurrency(s.total)}</p>
-                    <p className="text-xs text-gray-400 mt-1">{pct.toFixed(1)}%</p>
+                    <CurrencyBreakdownList currencies={s.currencies} inline convertToUsd={convertToUsd} rates={exchangeRates} />
+                    <p className="text-sm font-medium text-gray-600 mt-1">{pct.toFixed(1)}%</p>
                   </button>
                   {selectedStatus === statusKey && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
@@ -169,8 +195,8 @@ export default function AnalyticsDashboard({
                       >
                         View in Data Page
                       </a>
-                      <p className="text-xs text-gray-500 text-center">
-                        {s.count} transactions totaling {formatCurrency(s.total)}
+                      <p className="text-sm font-medium text-gray-600 text-center">
+                        {s.count} transactions
                       </p>
                     </div>
                   )}

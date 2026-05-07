@@ -1,26 +1,48 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/adapters/sqlite';
-import fs from 'fs';
-import path from 'path';
-import Papa from 'papaparse';
 
 export async function GET() {
   const db = getDb();
 
-  // Get Extension_Users data for uninstalls and purchases
-  const extPath = path.join(process.cwd(), 'store-data', 'Extension_Users.csv');
-  const extData = Papa.parse(fs.readFileSync(extPath, 'utf-8'), {
-    header: true,
-    skipEmptyLines: true,
-  }).data as Record<string, string>[];
+  // Cancellations from Extension_Users (Uninstall/Uninstalled)
+  const extCancelRows = db.prepare(`
+    SELECT id, date, raw_data
+    FROM transactions
+    WHERE source_file = 'Extension_Users'
+      AND json_extract(raw_data, '$.Status') IN ('Uninstall', 'Uninstalled')
+  `).all() as { id: string; date: string; raw_data: string }[];
 
-  // Filter out instawebworks demo emails (internal testing data)
-  const filteredExtData = extData.filter(r => {
-    const email = r['Email'] || '';
-    return !email.includes('instawebworks.com.au');
-  });
+  // Cancellations from Store_Transactions (cancel/scheduled_cancel)
+  const txnCancelRows = db.prepare(`
+    SELECT id, date, raw_data
+    FROM transactions
+    WHERE source_file = 'Store_Transactions'
+      AND status IN ('cancel', 'scheduled_cancel')
+  `).all() as { id: string; date: string; raw_data: string }[];
 
-  // Normalize extension names to avoid duplicates
+  // Purchases from Extension_Users
+  const purchaseRows = db.prepare(`
+    SELECT id, date, raw_data
+    FROM transactions
+    WHERE source_file = 'Extension_Users'
+      AND json_extract(raw_data, '$."Purchased?"') = 'true'
+  `).all() as { id: string; date: string; raw_data: string }[];
+
+  // Installs from Extension_Users (all rows)
+  const installRows = db.prepare(`
+    SELECT id, date, raw_data
+    FROM transactions
+    WHERE source_file = 'Extension_Users'
+  `).all() as { id: string; date: string; raw_data: string }[];
+
+  // Payment failures from Store_Transactions
+  const failureRows = db.prepare(`
+    SELECT id, date, raw_data
+    FROM transactions
+    WHERE source_file = 'Store_Transactions'
+      AND status = 'recurring_failure'
+  `).all() as { id: string; date: string; raw_data: string }[];
+
   const normalizeExtName = (name: string): string => {
     return name
       .replace(/For\s+ZOHO\s+CRM/gi, '')
@@ -33,69 +55,74 @@ export async function GET() {
       .trim();
   };
 
-  // Uninstalls by status
-  const uninstalls = filteredExtData.filter(r => ['Uninstall', 'Uninstalled'].includes(r['Status']));
-  
-  // Purchases
-  const purchases = filteredExtData.filter(r => r['Purchased?'] === 'true');
+  const getServiceName = (raw: Record<string, unknown>): string => {
+    return (raw['Service Name'] as string) || (raw['Platform'] as string) || '(unknown)';
+  };
 
-  // Installs (all rows represent installations)
-  const installs = filteredExtData;
+  const getInstallDate = (raw: Record<string, unknown>): string => {
+    return (raw['First Install Date'] as string) || '';
+  };
 
-  // Monthly breakdown for uninstalls (using First Install Date)
-  const uninstallByMonth: Record<string, number> = {};
-  uninstalls.forEach(r => {
-    const m = (r['First Install Date'] || '').substring(0, 7);
-    if (m && m.length >= 7) uninstallByMonth[m] = (uninstallByMonth[m] || 0) + 1;
+  // Combine all cancellations
+  const allCancellations = [
+    ...extCancelRows.map(r => {
+      const raw = JSON.parse(r.raw_data);
+      return { date: r.date, service: normalizeExtName(getServiceName(raw)), installDate: getInstallDate(raw), source: 'extension' as const };
+    }),
+    ...txnCancelRows.map(r => {
+      const raw = JSON.parse(r.raw_data);
+      return { date: r.date, service: normalizeExtName(getServiceName(raw)), installDate: '', source: 'subscription' as const };
+    }),
+  ];
+
+  // Monthly breakdown for cancellations
+  const cancelByMonth: Record<string, number> = {};
+  allCancellations.forEach(c => {
+    const m = (c.date || '').substring(0, 7);
+    if (m && m.length >= 7) cancelByMonth[m] = (cancelByMonth[m] || 0) + 1;
   });
 
-  // Monthly breakdown for purchases (using First Install Date)
+  // Monthly breakdown for purchases
   const purchaseByMonth: Record<string, number> = {};
-  purchases.forEach(r => {
-    const m = (r['First Install Date'] || '').substring(0, 7);
+  purchaseRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const m = (getInstallDate(raw) || '').substring(0, 7);
     if (m && m.length >= 7) purchaseByMonth[m] = (purchaseByMonth[m] || 0) + 1;
   });
 
-  // Monthly breakdown for installs (using First Install Date)
+  // Monthly breakdown for installs
   const installByMonth: Record<string, number> = {};
-  installs.forEach(r => {
-    const m = (r['First Install Date'] || '').substring(0, 7);
+  installRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const m = (getInstallDate(raw) || '').substring(0, 7);
     if (m && m.length >= 7) installByMonth[m] = (installByMonth[m] || 0) + 1;
   });
 
-  // Payment failures from transactions (parse raw_data JSON)
-  const failureRows = db.prepare(`
-    SELECT raw_data, date
-    FROM transactions
-    WHERE source_file = 'Store_Transactions' AND status = 'recurring_failure'
-  `).all() as { raw_data: string; date: string }[];
-
+  // Monthly breakdown for failures
   const failureByMonth: Record<string, number> = {};
-  const failureByExt: Record<string, number> = {};
   failureRows.forEach(r => {
-    const raw = JSON.parse(r.raw_data);
     const m = (r.date || '').substring(0, 7);
     if (m) failureByMonth[m] = (failureByMonth[m] || 0) + 1;
-    const service = raw['Service Name'] || '(unknown)';
-    failureByExt[service] = (failureByExt[service] || 0) + 1;
   });
 
   // Yearly breakdowns
-  const uninstallByYear: Record<string, number> = {};
-  uninstalls.forEach(r => {
-    const y = (r['First Install Date'] || '').substring(0, 4);
-    if (y && y.length === 4 && !isNaN(parseInt(y))) uninstallByYear[y] = (uninstallByYear[y] || 0) + 1;
+  const cancelByYear: Record<string, number> = {};
+  allCancellations.forEach(c => {
+    const y = (c.date || '').substring(0, 4);
+    if (y && y.length === 4 && !isNaN(parseInt(y))) cancelByYear[y] = (cancelByYear[y] || 0) + 1;
   });
 
   const purchaseByYear: Record<string, number> = {};
-  purchases.forEach(r => {
-    const y = (r['First Install Date'] || '').substring(0, 4);
+  purchaseRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const y = (getInstallDate(raw) || '').substring(0, 4);
     if (y && y.length === 4 && !isNaN(parseInt(y))) purchaseByYear[y] = (purchaseByYear[y] || 0) + 1;
   });
 
   const installByYear: Record<string, number> = {};
-  installs.forEach(r => {
-    const y = (r['First Install Date'] || '').substring(0, 4);
+  installRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const y = (getInstallDate(raw) || '').substring(0, 4);
     if (y && y.length === 4 && !isNaN(parseInt(y))) installByYear[y] = (installByYear[y] || 0) + 1;
   });
 
@@ -105,40 +132,48 @@ export async function GET() {
     failureByYear[year] = (failureByYear[year] || 0) + count;
   });
 
-  // Per extension breakdown (total counts)
-  const uninstallByExt: Record<string, number> = {};
-  uninstalls.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
-    uninstallByExt[p] = (uninstallByExt[p] || 0) + 1;
+  // Per extension/service breakdown
+  const cancelByExt: Record<string, number> = {};
+  allCancellations.forEach(c => {
+    cancelByExt[c.service] = (cancelByExt[c.service] || 0) + 1;
   });
 
   const purchaseByExt: Record<string, number> = {};
-  purchases.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
+  purchaseRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
     purchaseByExt[p] = (purchaseByExt[p] || 0) + 1;
   });
 
   const installByExt: Record<string, number> = {};
-  installs.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
+  installRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
     installByExt[p] = (installByExt[p] || 0) + 1;
   });
 
-  // Extension-wise monthly breakdown (for time-series by extension)
-  const uninstallByExtMonth: Record<string, Record<string, number>> = {};
-  uninstalls.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
-    const m = (r['First Install Date'] || '').substring(0, 7);
+  const failureByExt: Record<string, number> = {};
+  failureRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
+    failureByExt[p] = (failureByExt[p] || 0) + 1;
+  });
+
+  // Extension-wise monthly breakdown
+  const cancelByExtMonth: Record<string, Record<string, number>> = {};
+  allCancellations.forEach(c => {
+    const m = (c.date || '').substring(0, 7);
     if (m && m.length >= 7) {
-      if (!uninstallByExtMonth[p]) uninstallByExtMonth[p] = {};
-      uninstallByExtMonth[p][m] = (uninstallByExtMonth[p][m] || 0) + 1;
+      if (!cancelByExtMonth[c.service]) cancelByExtMonth[c.service] = {};
+      cancelByExtMonth[c.service][m] = (cancelByExtMonth[c.service][m] || 0) + 1;
     }
   });
 
   const purchaseByExtMonth: Record<string, Record<string, number>> = {};
-  purchases.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
-    const m = (r['First Install Date'] || '').substring(0, 7);
+  purchaseRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
+    const m = (getInstallDate(raw) || '').substring(0, 7);
     if (m && m.length >= 7) {
       if (!purchaseByExtMonth[p]) purchaseByExtMonth[p] = {};
       purchaseByExtMonth[p][m] = (purchaseByExtMonth[p][m] || 0) + 1;
@@ -146,30 +181,42 @@ export async function GET() {
   });
 
   const installByExtMonth: Record<string, Record<string, number>> = {};
-  installs.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
-    const m = (r['First Install Date'] || '').substring(0, 7);
+  installRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
+    const m = (getInstallDate(raw) || '').substring(0, 7);
     if (m && m.length >= 7) {
       if (!installByExtMonth[p]) installByExtMonth[p] = {};
       installByExtMonth[p][m] = (installByExtMonth[p][m] || 0) + 1;
     }
   });
 
+  const failureByExtMonth: Record<string, Record<string, number>> = {};
+  failureRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
+    const m = (r.date || '').substring(0, 7);
+    if (m && m.length >= 7) {
+      if (!failureByExtMonth[p]) failureByExtMonth[p] = {};
+      failureByExtMonth[p][m] = (failureByExtMonth[p][m] || 0) + 1;
+    }
+  });
+
   // Extension-wise yearly breakdown
-  const uninstallByExtYear: Record<string, Record<string, number>> = {};
-  uninstalls.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
-    const y = (r['First Install Date'] || '').substring(0, 4);
+  const cancelByExtYear: Record<string, Record<string, number>> = {};
+  allCancellations.forEach(c => {
+    const y = (c.date || '').substring(0, 4);
     if (y && y.length === 4 && !isNaN(parseInt(y))) {
-      if (!uninstallByExtYear[p]) uninstallByExtYear[p] = {};
-      uninstallByExtYear[p][y] = (uninstallByExtYear[p][y] || 0) + 1;
+      if (!cancelByExtYear[c.service]) cancelByExtYear[c.service] = {};
+      cancelByExtYear[c.service][y] = (cancelByExtYear[c.service][y] || 0) + 1;
     }
   });
 
   const purchaseByExtYear: Record<string, Record<string, number>> = {};
-  purchases.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
-    const y = (r['First Install Date'] || '').substring(0, 4);
+  purchaseRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
+    const y = (getInstallDate(raw) || '').substring(0, 4);
     if (y && y.length === 4 && !isNaN(parseInt(y))) {
       if (!purchaseByExtYear[p]) purchaseByExtYear[p] = {};
       purchaseByExtYear[p][y] = (purchaseByExtYear[p][y] || 0) + 1;
@@ -177,42 +224,73 @@ export async function GET() {
   });
 
   const installByExtYear: Record<string, Record<string, number>> = {};
-  installs.forEach(r => {
-    const p = normalizeExtName(r['Platform'] || '(unknown)');
-    const y = (r['First Install Date'] || '').substring(0, 4);
+  installRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
+    const y = (getInstallDate(raw) || '').substring(0, 4);
     if (y && y.length === 4 && !isNaN(parseInt(y))) {
       if (!installByExtYear[p]) installByExtYear[p] = {};
       installByExtYear[p][y] = (installByExtYear[p][y] || 0) + 1;
     }
   });
 
-  // Get cancellations count
-  const cancelRows = db.prepare(`
-    SELECT COUNT(*) as count
-    FROM transactions
-    WHERE source_file = 'Store_Transactions' AND status = 'cancel'
-  `).get() as { count: number };
+  const failureByExtYear: Record<string, Record<string, number>> = {};
+  failureRows.forEach(r => {
+    const raw = JSON.parse(r.raw_data);
+    const p = normalizeExtName(getServiceName(raw));
+    const y = (r.date || '').substring(0, 4);
+    if (y && y.length === 4 && !isNaN(parseInt(y))) {
+      if (!failureByExtYear[p]) failureByExtYear[p] = {};
+      failureByExtYear[p][y] = (failureByExtYear[p][y] || 0) + 1;
+    }
+  });
+
+  // Count cancels that followed a payment failure (same customer within 30 days)
+  const failureCustomers = new Set(
+    failureRows.map(r => {
+      const raw = JSON.parse(r.raw_data);
+      return raw['Customer Company Name'] as string;
+    }).filter(Boolean)
+  );
+
+  const cancelCustomerDates = txnCancelRows.map(r => {
+    const raw = JSON.parse(r.raw_data);
+    return { customer: raw['Customer Company Name'] as string, date: r.date };
+  }).filter(c => failureCustomers.has(c.customer));
+
+  let cancelsAfterFailure = 0;
+  cancelCustomerDates.forEach(({ customer, date }) => {
+    const cancelDate = new Date(date);
+    const failureRow = failureRows.find(r => {
+      const raw = JSON.parse(r.raw_data);
+      const failDate = new Date(r.date);
+      const diff = (cancelDate.getTime() - failDate.getTime()) / (1000 * 60 * 60 * 24);
+      return raw['Customer Company Name'] === customer && diff >= 0 && diff <= 30;
+    });
+    if (failureRow) cancelsAfterFailure++;
+  });
 
   return NextResponse.json({
     summary: {
-      uninstalls: uninstalls.length,
+      cancellations: allCancellations.length,
       paymentFailures: failureRows.length,
-      purchases: purchases.length,
-      installs: installs.length,
-      cancellations: cancelRows.count,
-      cancelsAfterFailure: Math.min(10, failureRows.length), // Approximate
+      purchases: purchaseRows.length,
+      installs: installRows.length,
+      cancelsAfterFailure,
     },
-    uninstalls: {
-      monthly: Object.entries(uninstallByMonth).sort((a, b) => a[0].localeCompare(b[0])),
-      yearly: Object.entries(uninstallByYear).sort((a, b) => a[0].localeCompare(b[0])),
-      byExtension: Object.entries(uninstallByExt).sort((a, b) => b[1] - a[1]),
-      byExtensionMonthly: uninstallByExtMonth,
-      byExtensionYearly: uninstallByExtYear,
+    cancellations: {
+      monthly: Object.entries(cancelByMonth).sort((a, b) => a[0].localeCompare(b[0])),
+      yearly: Object.entries(cancelByYear).sort((a, b) => a[0].localeCompare(b[0])),
+      byExtension: Object.entries(cancelByExt).sort((a, b) => b[1] - a[1]),
+      byExtensionMonthly: cancelByExtMonth,
+      byExtensionYearly: cancelByExtYear,
     },
     paymentFailures: {
       monthly: Object.entries(failureByMonth).sort((a, b) => a[0].localeCompare(b[0])),
       yearly: Object.entries(failureByYear).sort((a, b) => a[0].localeCompare(b[0])),
       byExtension: Object.entries(failureByExt).sort((a, b) => b[1] - a[1]),
+      byExtensionMonthly: failureByExtMonth,
+      byExtensionYearly: failureByExtYear,
     },
     purchases: {
       monthly: Object.entries(purchaseByMonth).sort((a, b) => a[0].localeCompare(b[0])),

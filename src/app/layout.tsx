@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Shell from "@/components/Shell";
 
 export const metadata: Metadata = {
   title: "Store Data Viewer",
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-gray-50" suppressHydrationWarning>{children}</body>
+      <body className="min-h-screen bg-slate-50" suppressHydrationWarning>
+        <Shell>{children}</Shell>
+      </body>
     </html>
   );
 }

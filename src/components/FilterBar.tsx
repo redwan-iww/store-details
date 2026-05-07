@@ -52,76 +52,50 @@ export default function FilterBar({
     return new Date(year, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const getCustomerCount = () => {
-    if (!selectedCustomer) return `${customers.length} total`;
-    return `1 selected`;
-  };
-
-  const getStatusCount = () => {
-    if (!selectedStatus) return `${statuses.length} total`;
-    return `1 selected`;
-  };
-
   return (
-    <nav aria-label="Store data filters" className="flex flex-wrap items-center gap-6 p-5 bg-white rounded-lg shadow-md border border-gray-200">
+    <nav aria-label="Store data filters" className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
       <h2 className="sr-only">Filter Controls</h2>
 
-      {/* Month Navigation Group */}
       {!hideMonthFilter && (
-        <div role="group" aria-labelledby="month-nav-label" className="flex items-center gap-2">
-          <span id="month-nav-label" className="text-sm font-semibold text-gray-800 mr-1">Month</span>
+        <div className="flex items-center gap-2">
           <button
             onClick={goToPrevMonth}
-            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[70px]"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-md text-sm font-medium text-slate-700 transition-colors"
           >
             Prev
           </button>
-          <span
-            role="status"
-            aria-live="polite"
-            className="font-semibold min-w-[150px] text-center text-gray-900 text-base"
-          >
+          <span className="text-sm font-semibold text-slate-900 min-w-[130px] text-center">
             {formatMonthDisplay(currentMonth)}
           </span>
           <button
             onClick={goToNextMonth}
-            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 min-w-[70px]"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-md text-sm font-medium text-slate-700 transition-colors"
           >
             Next
           </button>
-        </div>
-      )}
-
-      {/* Month Picker */}
-      {!hideMonthFilter && (
-        <div className="flex items-center gap-3">
-          <label htmlFor="month-picker" className="text-sm font-semibold text-gray-800">Jump to</label>
           <input
-            id="month-picker"
             type="month"
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
               onMonthChange(e.target.value);
             }}
-            className="px-3 py-2 border border-gray-300 rounded font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            className="px-2 py-1.5 border border-slate-200 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       )}
 
-      {/* Type Toggle */}
-      <div role="group" aria-labelledby="type-filter-label" className="flex items-center gap-2">
-        <span id="type-filter-label" className="text-sm font-semibold text-gray-800">Type</span>
-        <div className="flex rounded overflow-hidden border border-gray-300">
+      <div className="flex items-center gap-2">
+        <div className="flex rounded-lg overflow-hidden border border-slate-200">
           {(['all', 'service', 'product'] as const).map((t) => (
             <button
               key={t}
               onClick={() => onTypeChange(t)}
               aria-pressed={currentType === t}
-              className={`px-4 py-2 capitalize font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
+              className={`px-3 py-1.5 capitalize text-sm font-medium transition-colors ${
                 currentType === t
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-50'
               }`}
             >
               {t}
@@ -130,42 +104,30 @@ export default function FilterBar({
         </div>
       </div>
 
-      {/* Status Filter */}
-      <div className="flex items-center gap-3">
-        <label htmlFor="status-filter" className="text-sm font-semibold text-gray-800">Status</label>
+      <div className="flex items-center gap-2">
         <select
-          id="status-filter"
           value={selectedStatus}
           onChange={(e) => onStatusChange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[150px]"
+          className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Statuses</option>
           {statuses.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
-        <span role="status" aria-live="polite" className="text-sm text-gray-600">
-          ({getStatusCount()})
-        </span>
       </div>
 
-      {/* Customer Filter */}
-      <div className="flex items-center gap-3">
-        <label htmlFor="customer-filter" className="text-sm font-semibold text-gray-800">Customer</label>
+      <div className="flex items-center gap-2">
         <select
-          id="customer-filter"
           value={selectedCustomer}
           onChange={(e) => onCustomerChange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[180px]"
+          className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[160px]"
         >
           <option value="">All Customers</option>
           {customers.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
-        <span role="status" aria-live="polite" className="text-sm text-gray-600">
-          ({getCustomerCount()})
-        </span>
       </div>
     </nav>
   );

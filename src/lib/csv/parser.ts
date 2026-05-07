@@ -60,6 +60,19 @@ function extractDescription(source: CSVSource, row: Record<string, string>): str
   return row[CSV_CONFIG[source].descriptionField] || '';
 }
 
+function extractCurrency(source: CSVSource, row: Record<string, string>): string {
+  const currencyFieldMap: Record<string, string> = {
+    Books_Invoice: 'Currency Code',
+    Store_Subscriptions: 'Subscription Currency',
+    Store_Transactions: 'Currency',
+    Store_Commissions: 'Commission Currency',
+    Extension_Users: '',
+  };
+  const field = currencyFieldMap[source];
+  if (field && row[field]) return row[field].trim();
+  return 'USD';
+}
+
 function extractStatus(source: CSVSource, row: Record<string, string>): string {
   return row[CSV_CONFIG[source].statusField] || '';
 }
@@ -110,7 +123,7 @@ export function parseCSV(source: CSVSource, csvContent: string): { inserted: num
       customer: extractCustomer(effectiveSource, row),
       description: extractDescription(effectiveSource, row),
       amount: extractAmount(effectiveSource, row),
-      currency: 'USD',
+      currency: extractCurrency(effectiveSource, row),
       status: extractStatus(effectiveSource, row),
       raw_data: row,
     };

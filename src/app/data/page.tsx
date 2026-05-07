@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import HomeContent from '@/components/HomeContent';
 import type { RecordType } from '@/lib/types';
@@ -20,6 +19,7 @@ function DataPageContent() {
   const [records, setRecords] = useState<import('@/lib/types').Transaction[]>([]);
   const [summary, setSummary] = useState<{ totalAmount: number; count: number }>({ totalAmount: 0, count: 0 });
   const [loading, setLoading] = useState(false);
+  const [convertToUsd, setConvertToUsd] = useState(true);
 
   const customerParam = searchParams.get('customer') || '';
   const statusParam = searchParams.get('status') || '';
@@ -95,66 +95,33 @@ function DataPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">
-              {selectedCustomer ? `Customer: ${selectedCustomer}` : selectedStatus ? `Status: ${selectedStatus}` : 'Store Data Viewer'}
-            </h1>
-            <p className="text-sm text-gray-600 mt-0.5">
-              {selectedCustomer
-                ? `Showing all transactions for ${selectedCustomer}`
-                : selectedStatus
-                ? `Showing all transactions with status ${selectedStatus}`
-                : '7 years of Zoho store data — filter by month, service, product, or customer'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {(selectedCustomer || selectedStatus) && (
-              <button
-                onClick={clearFilters}
-                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Clear Filter
-              </button>
-            )}
-            <Link
-              href="/"
-              className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-300 rounded-lg hover:bg-blue-50"
-            >
-              View Analytics
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="p-6">
-        <HomeContent
-          currentMonth={currentMonth}
-          currentType={currentType}
-          selectedCustomer={selectedCustomer}
-          selectedStatus={selectedStatus}
-          customers={customers}
-          statuses={statuses}
-          records={records}
-          summary={summary}
-          loading={loading}
-          onMonthChange={setCurrentMonth}
-          onTypeChange={setCurrentType}
-          onCustomerChange={setSelectedCustomer}
-          onStatusChange={setSelectedStatus}
-          hideMonthFilter={!!selectedCustomer || !!selectedStatus}
-        />
-      </main>
-    </div>
+    <HomeContent
+      currentMonth={currentMonth}
+      currentType={currentType}
+      selectedCustomer={selectedCustomer}
+      selectedStatus={selectedStatus}
+      customers={customers}
+      statuses={statuses}
+      records={records}
+      summary={summary}
+      loading={loading}
+      onMonthChange={setCurrentMonth}
+      onTypeChange={setCurrentType}
+      onCustomerChange={setSelectedCustomer}
+      onStatusChange={setSelectedStatus}
+      hideMonthFilter={!!selectedCustomer || !!selectedStatus}
+      convertToUsd={convertToUsd}
+      onConvertToUsdChange={setConvertToUsd}
+      showClearFilters={!!selectedCustomer || !!selectedStatus}
+      onClearFilters={clearFilters}
+    />
   );
 }
 
 export default function DataPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
     }>

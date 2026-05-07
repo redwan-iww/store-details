@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
   const db = getDb();
 
   let monthlyQuery = `
-    SELECT month, type, SUM(amount) as total, COUNT(*) as count
+    SELECT month, type, currency, SUM(amount) as total, COUNT(*) as count
     FROM transactions
   `;
   const monthlyParams: string[] = [];
@@ -190,9 +190,9 @@ export async function GET(request: NextRequest) {
     monthlyParams.push(filterType);
   }
 
-  monthlyQuery += ` GROUP BY month, type ORDER BY month DESC`;
+  monthlyQuery += ` GROUP BY month, type, currency ORDER BY month DESC`;
 
-  const monthlyRows = db.prepare(monthlyQuery).all(...monthlyParams) as MonthlyRow[];
+  const monthlyRows = db.prepare(monthlyQuery).all(...monthlyParams) as MonthlyRow[] & { currency: string }[];
 
   const monthlyReversed = monthlyRows.reverse();
 
@@ -221,35 +221,66 @@ export async function GET(request: NextRequest) {
   }));
 
   const customerQuery = `
-    SELECT customer, SUM(amount) as total, COUNT(*) as count
+    SELECT customer, currency, SUM(amount) as total, COUNT(*) as count
     FROM transactions
     ${filterType !== 'all' ? 'WHERE type = ?' : ''}
-    GROUP BY customer HAVING customer IS NOT NULL AND customer != '' ORDER BY total DESC LIMIT 10
+    GROUP BY customer, currency HAVING customer IS NOT NULL AND customer != '' ORDER BY total DESC
   `;
   const customerParams = filterType !== 'all' ? [filterType] : [];
-  const customerRows = db.prepare(customerQuery).all(...customerParams) as {
+  const customerRawRows = db.prepare(customerQuery).all(...customerParams) as {
     customer: string;
+    currency: string;
     total: number;
     count: number;
   }[];
+
+  const customerMap = new Map<string, { customer: string; total: number; count: number; currencies: { currency: string; amount: number; count: number }[] }>();
+  for (const row of customerRawRows) {
+    if (!customerMap.has(row.customer)) {
+      customerMap.set(row.customer, { customer: row.customer, total: 0, count: 0, currencies: [] });
+    }
+    const entry = customerMap.get(row.customer)!;
+    entry.total += row.total;
+    entry.count += row.count;
+    entry.currencies.push({ currency: row.currency, amount: row.total, count: row.count });
+  }
+  const customerRows = [...customerMap.values()].sort((a, b) => b.total - a.total).slice(0, 10);
 
   const statusQuery = `
-    SELECT status, COUNT(*) as count, SUM(amount) as total
+    SELECT status, currency, COUNT(*) as count, SUM(amount) as total
     FROM transactions
     ${filterType !== 'all' ? 'WHERE type = ?' : ''}
-    GROUP BY status ORDER BY count DESC
+    GROUP BY status, currency ORDER BY count DESC
   `;
-  const statusRows = db.prepare(statusQuery).all(...customerParams) as {
+  const statusRawRows = db.prepare(statusQuery).all(...customerParams) as {
     status: string;
+    currency: string;
     count: number;
     total: number;
   }[];
 
+  const statusMap = new Map<string, { status: string; count: number; total: number; currencies: { currency: string; amount: number; count: number }[] }>();
+  for (const row of statusRawRows) {
+    const key = row.status || 'Unknown';
+    if (!statusMap.has(key)) {
+      statusMap.set(key, { status: row.status, count: 0, total: 0, currencies: [] });
+    }
+    const entry = statusMap.get(key)!;
+    entry.count += row.count;
+    entry.total += row.total;
+    entry.currencies.push({ currency: row.currency, amount: row.total, count: row.count });
+  }
+  const statusRows = [...statusMap.values()].sort((a, b) => b.count - a.count);
+
   const typeSplitRows = db.prepare(`
-    SELECT type, SUM(amount) as total, COUNT(*) as count
+    SELECT type, currency, SUM(amount) as total, COUNT(*) as count
     FROM transactions
-    GROUP BY type
-  `).all() as { type: string; total: number; count: number }[];
+    GROUP BY type, currency
+  `).all() as { type: string; currency: string; total: number; count: number }[];
+
+  const overallByCurrency = db.prepare(`
+    SELECT currency, SUM(amount) as total, COUNT(*) as count FROM transactions GROUP BY currency
+  `).all() as { currency: string; total: number; count: number }[];
 
   const overallRows = db.prepare(`
     SELECT SUM(amount) as total, COUNT(*) as count FROM transactions
@@ -261,5 +292,6 @@ export async function GET(request: NextRequest) {
     statusBreakdown: statusRows,
     typeSplit: typeSplitRows,
     overall: overallRows[0] || { total: 0, count: 0 },
+    overallByCurrency,
   });
 }

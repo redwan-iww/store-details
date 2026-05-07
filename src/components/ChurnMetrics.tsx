@@ -19,14 +19,13 @@ import {
 
 interface ChurnMetricsData {
   summary: {
-    uninstalls: number;
+    cancellations: number;
     paymentFailures: number;
     purchases: number;
     installs: number;
-    cancellations: number;
     cancelsAfterFailure: number;
   };
-  uninstalls: {
+  cancellations: {
     monthly: [string, number][];
     yearly: [string, number][];
     byExtension: [string, number][];
@@ -86,8 +85,8 @@ export default function ChurnMetrics() {
   const [loading, setLoading] = useState(true);
   const [selectedExtension, setSelectedExtension] = useState<string>('');
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly' | 'extension' | 'extensionDetail'>('monthly');
-  const [selectedMetric, setSelectedMetric] = useState<'all' | 'uninstalls' | 'paymentFailures' | 'purchases' | 'installs'>('all');
-  const [extensionMetric, setExtensionMetric] = useState<'all' | 'uninstalls' | 'paymentFailures' | 'purchases' | 'installs'>('all');
+  const [selectedMetric, setSelectedMetric] = useState<'all' | 'cancellations' | 'paymentFailures' | 'purchases' | 'installs'>('all');
+  const [extensionMetric, setExtensionMetric] = useState<'all' | 'cancellations' | 'paymentFailures' | 'purchases' | 'installs'>('all');
   const [extensionViewMode, setExtensionViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [extensionYear, setExtensionYear] = useState<number>(2026);
@@ -102,7 +101,7 @@ export default function ChurnMetrics() {
         setData(d);
         setLoading(false);
         const years = [...new Set([
-          ...d.uninstalls.yearly.map(([y]: [string, number]) => parseInt(y)),
+          ...d.cancellations.yearly.map(([y]: [string, number]) => parseInt(y)),
           ...d.paymentFailures.yearly.map(([y]: [string, number]) => parseInt(y)),
           ...d.purchases.yearly.map(([y]: [string, number]) => parseInt(y)),
           ...d.installs.yearly.map(([y]: [string, number]) => parseInt(y)),
@@ -123,7 +122,7 @@ export default function ChurnMetrics() {
     const isCurrentYear = year === CURRENT_YEAR;
 
     const availableYears = [...new Set([
-      ...data.uninstalls.yearly.map(([y]) => parseInt(y)),
+      ...data.cancellations.yearly.map(([y]) => parseInt(y)),
       ...data.paymentFailures.yearly.map(([y]) => parseInt(y)),
       ...data.purchases.yearly.map(([y]) => parseInt(y)),
       ...data.installs.yearly.map(([y]) => parseInt(y)),
@@ -142,7 +141,7 @@ export default function ChurnMetrics() {
       return Math.round(sum / yearData.length);
     };
 
-    const avgUninstalls = calcAverage(data.uninstalls.monthly);
+    const avgUninstalls = calcAverage(data.cancellations.monthly);
     const avgFailures = calcAverage(data.paymentFailures.monthly);
     const avgPurchases = calcAverage(data.purchases.monthly);
     const avgInstalls = calcAverage(data.installs.monthly);
@@ -155,7 +154,7 @@ export default function ChurnMetrics() {
         const monthNum = index + 1;
         const monthStr = `${year}-${String(monthNum).padStart(2, '0')}`;
         const isBeforeFirstInstall = year < firstInstallYear || (year === firstInstallYear && monthNum < firstInstallMonthNum);
-        const u = data.uninstalls.monthly.find(([m]) => m === monthStr)?.[1] || 0;
+        const u = data.cancellations.monthly.find(([m]) => m === monthStr)?.[1] || 0;
         const p = data.paymentFailures.monthly.find(([m]) => m === monthStr)?.[1] || 0;
         const pu = data.purchases.monthly.find(([m]) => m === monthStr)?.[1] || 0;
         const i = data.installs.monthly.find(([m]) => m === monthStr)?.[1] || 0;
@@ -164,7 +163,7 @@ export default function ChurnMetrics() {
           fullName: `${fullMonthNames[index]} ${year}`,
           monthNum,
           year,
-          uninstalls: isBeforeFirstInstall ? null : u,
+          cancellations: isBeforeFirstInstall ? null : u,
           paymentFailures: isBeforeFirstInstall ? null : p,
           purchases: isBeforeFirstInstall ? null : pu,
           installs: isBeforeFirstInstall ? null : i,
@@ -178,7 +177,7 @@ export default function ChurnMetrics() {
         const isBeforeFirstInstall = yearNum < firstInstallYear;
         return {
           name: yearStr,
-          uninstalls: isBeforeFirstInstall ? null : data.uninstalls.yearly.find(([y]) => y === yearStr)?.[1] || 0,
+          cancellations: isBeforeFirstInstall ? null : data.cancellations.yearly.find(([y]) => y === yearStr)?.[1] || 0,
           paymentFailures: isBeforeFirstInstall ? null : data.paymentFailures.yearly.find(([y]) => y === yearStr)?.[1] || 0,
           purchases: isBeforeFirstInstall ? null : data.purchases.yearly.find(([y]) => y === yearStr)?.[1] || 0,
           installs: isBeforeFirstInstall ? null : data.installs.yearly.find(([y]) => y === yearStr)?.[1] || 0,
@@ -186,14 +185,14 @@ export default function ChurnMetrics() {
       });
     } else if (viewMode === 'extension') {
       const allExts = new Set([
-        ...data.uninstalls.byExtension.map(([e]) => e),
+        ...data.cancellations.byExtension.map(([e]) => e),
         ...data.paymentFailures.byExtension.map(([e]) => e),
         ...data.purchases.byExtension.map(([e]) => e),
         ...data.installs.byExtension.map(([e]) => e),
       ]);
       return [...allExts].slice(0, 10).map(ext => ({
         name: ext.length > 25 ? ext.substring(0, 25) + '...' : ext,
-        uninstalls: data.uninstalls.byExtension.find(([e]) => e === ext)?.[1] || 0,
+        cancellations: data.cancellations.byExtension.find(([e]) => e === ext)?.[1] || 0,
         paymentFailures: data.paymentFailures.byExtension.find(([e]) => e === ext)?.[1] || 0,
         purchases: data.purchases.byExtension.find(([e]) => e === ext)?.[1] || 0,
         installs: data.installs.byExtension.find(([e]) => e === ext)?.[1] || 0,
@@ -218,7 +217,7 @@ export default function ChurnMetrics() {
       return {
         installsData: makeData(data.installs.byExtensionMonthly),
         purchasesData: makeData(data.purchases.byExtensionMonthly),
-        uninstallsData: makeData(data.uninstalls.byExtensionMonthly),
+        cancellationsData: makeData(data.cancellations.byExtensionMonthly),
         failuresData: makeData(data.paymentFailures.byExtensionMonthly || {}),
         topExts,
         extNameMap,
@@ -234,13 +233,13 @@ export default function ChurnMetrics() {
       const availableYears = [...new Set([
         ...Object.keys(data.installs.byExtensionYearly[selectedExtension] || {}),
         ...Object.keys(data.purchases.byExtensionYearly[selectedExtension] || {}),
-        ...Object.keys(data.uninstalls.byExtensionYearly[selectedExtension] || {}),
+        ...Object.keys(data.cancellations.byExtensionYearly[selectedExtension] || {}),
       ])].sort();
       return availableYears.map(yearStr => ({
         name: yearStr,
         installs: data.installs.byExtensionYearly[selectedExtension]?.[yearStr] || 0,
         purchases: data.purchases.byExtensionYearly[selectedExtension]?.[yearStr] || 0,
-        uninstalls: data.uninstalls.byExtensionYearly[selectedExtension]?.[yearStr] || 0,
+        cancellations: data.cancellations.byExtensionYearly[selectedExtension]?.[yearStr] || 0,
         paymentFailures: data.paymentFailures.byExtensionYearly?.[selectedExtension]?.[yearStr] || 0,
       }));
     }
@@ -256,7 +255,7 @@ export default function ChurnMetrics() {
         name: monthName,
         installs: isBeforeFirstInstall ? null : (data.installs.byExtensionMonthly[selectedExtension]?.[monthStr] || 0),
         purchases: isBeforeFirstInstall ? null : (data.purchases.byExtensionMonthly[selectedExtension]?.[monthStr] || 0),
-        uninstalls: isBeforeFirstInstall ? null : (data.uninstalls.byExtensionMonthly[selectedExtension]?.[monthStr] || 0),
+        cancellations: isBeforeFirstInstall ? null : (data.cancellations.byExtensionMonthly[selectedExtension]?.[monthStr] || 0),
         paymentFailures: isBeforeFirstInstall ? null : (data.paymentFailures.byExtensionMonthly?.[selectedExtension]?.[monthStr] || 0),
       };
     });
@@ -266,7 +265,7 @@ export default function ChurnMetrics() {
     if (!data) return [];
     if (extensionViewMode === 'yearly') {
       const availableYears = [...new Set([
-        ...data.uninstalls.yearly.map(([y]) => y),
+        ...data.cancellations.yearly.map(([y]) => y),
         ...data.purchases.yearly.map(([y]) => y),
         ...data.installs.yearly.map(([y]) => y),
       ])].sort();
@@ -274,7 +273,7 @@ export default function ChurnMetrics() {
         name: yearStr,
         installs: (data.installs.yearly.find(([y]) => y === yearStr)?.[1] || 0) as number | null,
         purchases: (data.purchases.yearly.find(([y]) => y === yearStr)?.[1] || 0) as number | null,
-        uninstalls: (data.uninstalls.yearly.find(([y]) => y === yearStr)?.[1] || 0) as number | null,
+        cancellations: (data.cancellations.yearly.find(([y]) => y === yearStr)?.[1] || 0) as number | null,
         paymentFailures: (data.paymentFailures.yearly.find(([y]) => y === yearStr)?.[1] || 0) as number | null,
       }));
     }
@@ -293,7 +292,7 @@ export default function ChurnMetrics() {
         year: extensionYear,
         installs: isBeforeFirstInstall ? null : (data.installs.monthly.find(([m]) => m === monthStr)?.[1] || 0),
         purchases: isBeforeFirstInstall ? null : (data.purchases.monthly.find(([m]) => m === monthStr)?.[1] || 0),
-        uninstalls: isBeforeFirstInstall ? null : (data.uninstalls.monthly.find(([m]) => m === monthStr)?.[1] || 0),
+        cancellations: isBeforeFirstInstall ? null : (data.cancellations.monthly.find(([m]) => m === monthStr)?.[1] || 0),
         paymentFailures: isBeforeFirstInstall ? null : (data.paymentFailures.monthly.find(([m]) => m === monthStr)?.[1] || 0),
       };
     });
@@ -328,7 +327,7 @@ export default function ChurnMetrics() {
   }
 
   const availableYears = [...new Set([
-    ...data.uninstalls.yearly.map(([y]) => parseInt(y)),
+    ...data.cancellations.yearly.map(([y]) => parseInt(y)),
     ...data.paymentFailures.yearly.map(([y]) => parseInt(y)),
     ...data.purchases.yearly.map(([y]) => parseInt(y)),
     ...data.installs.yearly.map(([y]) => parseInt(y)),
@@ -340,79 +339,53 @@ export default function ChurnMetrics() {
   const maxYear = availableYears[0] || 2026;
 
   const metricColors = {
-    uninstalls: '#EF4444',
+    cancellations: '#EF4444',
     paymentFailures: '#F59E0B',
     purchases: '#10B981',
     installs: '#3B82F6',
   };
 
   const metricLabels = {
-    uninstalls: 'Uninstalls',
+    cancellations: 'Cancellations',
     paymentFailures: 'Payment Failures',
     purchases: 'Purchases',
     installs: 'Installs',
   };
 
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow p-5 border border-blue-200">
-          <h3 className="text-sm font-medium text-gray-600">Total Installs</h3>
-          <p className="text-2xl font-bold text-blue-600 mt-1">{data.summary.installs.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">All extension installations</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-5 border border-green-200">
-          <h3 className="text-sm font-medium text-gray-600">Total Purchases</h3>
-          <p className="text-2xl font-bold text-green-600 mt-1">{data.summary.purchases.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">Purchased? = true</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-5 border border-red-200">
-          <h3 className="text-sm font-medium text-gray-600">Total Uninstalls</h3>
-          <p className="text-2xl font-bold text-red-600 mt-1">{data.summary.uninstalls.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">Status: Uninstall/Uninstalled</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-5 border border-amber-200">
-          <h3 className="text-sm font-medium text-gray-600">Payment Failures</h3>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{data.summary.paymentFailures.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">recurring_failure transactions</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-5 border border-gray-200">
-          <h3 className="text-sm font-medium text-gray-600">Cancellations after Failure</h3>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{data.summary.cancelsAfterFailure}</p>
-          <p className="text-xs text-gray-500 mt-1">{((data.summary.cancelsAfterFailure / data.summary.cancellations) * 100).toFixed(1)}% of cancels</p>
-        </div>
+    <>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="px-6 py-4 border-b border-slate-100">
+        <h2 className="text-base font-semibold text-slate-900">Churn Metrics</h2>
+        <p className="text-sm text-slate-500 mt-0.5">Cancellations, payment failures, and churn trends</p>
       </div>
-
-      {/* Controls and Chart */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-700">Metric:</span>
-              <div className="flex rounded overflow-hidden border border-gray-300">
-                {(['all', 'uninstalls', 'paymentFailures', 'purchases', 'installs'] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setSelectedMetric(m)}
-                    className={`px-3 py-1.5 capitalize font-medium text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
-                      selectedMetric === m ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {m === 'all' ? 'All Metrics' : m === 'paymentFailures' ? 'Payment Failures' : m === 'uninstalls' ? 'Uninstalls' : m === 'installs' ? 'Installs' : 'Purchases'}
-                  </button>
+      <div className="p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600">Metric:</span>
+            <div className="flex rounded-lg overflow-hidden border border-slate-200">
+              {(['all', 'cancellations', 'paymentFailures', 'purchases', 'installs'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMetric(m)}
+                  className={`px-3 py-1.5 capitalize font-medium text-sm transition-colors ${
+                    selectedMetric === m ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {m === 'all' ? 'All Metrics' : m === 'paymentFailures' ? 'Payment Failures' : m === 'cancellations' ? 'Cancellations' : m === 'installs' ? 'Installs' : 'Purchases'}
+                </button>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-700">View:</span>
-              <div className="flex rounded overflow-hidden border border-gray-300">
+              <span className="text-sm font-medium text-slate-600">View:</span>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200">
                 {(['monthly', 'yearly'] as const).map((v) => (
                   <button
                     key={v}
                     onClick={() => setViewMode(v)}
-                    className={`px-3 py-1.5 capitalize font-medium text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
-                      viewMode === v ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                    className={`px-3 py-1.5 capitalize font-medium text-sm transition-colors ${
+                      viewMode === v ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     {v}
@@ -422,35 +395,33 @@ export default function ChurnMetrics() {
             </div>
             {(viewMode === 'monthly' || viewMode === 'yearly') && (
               <>
-                <div className="flex items-center gap-3 pl-4 border-l border-gray-300">
+                <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
                   <div className="flex flex-col items-start gap-1">
-                    <span className="text-sm font-bold text-gray-800">Year:</span>
-                    <span className="text-xs text-gray-500">{minYear} - {maxYear}</span>
+                    <span className="text-sm font-medium text-slate-700">Year:</span>
+                    <span className="text-xs text-slate-500">{minYear} - {maxYear}</span>
                   </div>
                   <button
                     onClick={() => setSelectedYear(y => Math.max(minYear, y - 1))}
                     disabled={selectedYear <= minYear}
-                    className={`px-4 py-2 text-sm font-bold rounded-lg border-2 shadow-sm transition-all ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
                       selectedYear <= minYear 
-                        ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed' 
-                        : 'bg-blue-100 text-blue-800 border-blue-400 hover:bg-blue-200 hover:border-blue-500'
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
+                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                     }`}
-                    title={selectedYear <= minYear ? `Earliest year available: ${minYear}` : `Go to ${selectedYear - 1}`}
                   >
-                    ◀ Prev
+                    Prev
                   </button>
-                  <span className="text-lg font-bold text-white px-4 py-2 bg-blue-600 rounded-lg min-w-[100px] text-center shadow-md">{selectedYear}</span>
+                  <span className="text-sm font-semibold text-slate-900 px-3 py-1.5 bg-slate-100 rounded-lg">{selectedYear}</span>
                   <button
                     onClick={() => setSelectedYear(y => Math.min(maxYear, y + 1))}
                     disabled={selectedYear >= maxYear}
-                    className={`px-4 py-2 text-sm font-bold rounded-lg border-2 shadow-sm transition-all ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
                       selectedYear >= maxYear 
-                        ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed' 
-                        : 'bg-blue-100 text-blue-800 border-blue-400 hover:bg-blue-200 hover:border-blue-500'
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
+                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                     }`}
-                    title={selectedYear >= maxYear ? `Latest year available: ${maxYear}` : `Go to ${selectedYear + 1}`}
                   >
-                    Next ▶
+                    Next
                   </button>
                 </div>
               </>
@@ -496,7 +467,7 @@ export default function ChurnMetrics() {
                           <>
                             <p className="text-blue-600">Installs: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'installs')?.value)}</span></p>
                             <p className="text-green-600">Purchases: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'purchases')?.value)}</span></p>
-                            <p className="text-red-600">Uninstalls: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'uninstalls')?.value)}</span></p>
+                            <p className="text-red-600">Cancellations: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'cancellations')?.value)}</span></p>
                             <p className="text-amber-600">Payment Failures: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'paymentFailures')?.value)}</span></p>
                           </>
                         ) : (
@@ -513,7 +484,7 @@ export default function ChurnMetrics() {
                 <>
                   <Line type="monotone" dataKey="installs" name="Installs" stroke="#3B82F6" strokeWidth={2} dot={{ fill: '#3B82F6', r: 3 }} connectNulls={false} />
                   <Line type="monotone" dataKey="purchases" name="Purchases" stroke="#10B981" strokeWidth={2} dot={{ fill: '#10B981', r: 3 }} connectNulls={false} />
-                  <Line type="monotone" dataKey="uninstalls" name="Uninstalls" stroke="#EF4444" strokeWidth={2} dot={{ fill: '#EF4444', r: 3 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="cancellations" name="Cancellations" stroke="#EF4444" strokeWidth={2} dot={{ fill: '#EF4444', r: 3 }} connectNulls={false} />
                   <Line type="monotone" dataKey="paymentFailures" name="Payment Failures" stroke="#F59E0B" strokeWidth={2} dot={{ fill: '#F59E0B', r: 3 }} connectNulls={false} />
                 </>
               ) : (
@@ -538,14 +509,14 @@ export default function ChurnMetrics() {
               <h4 className="font-semibold text-green-800 mb-2">🟢 Purchase Insight</h4>
               <p className="text-sm text-green-700">
                 {data.summary.purchases} total purchases. Conversion rate:{' '}
-                {((data.summary.purchases / (data.summary.purchases + data.summary.uninstalls)) * 100).toFixed(1)}%.
+                {((data.summary.purchases / (data.summary.purchases + data.summary.cancellations)) * 100).toFixed(1)}%.
               </p>
             </div>
             <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-              <h4 className="font-semibold text-red-800 mb-2">🔴 Uninstall Insight</h4>
+              <h4 className="font-semibold text-red-800 mb-2">🔴 Cancellation Insight</h4>
               <p className="text-sm text-red-700">
-                {data.uninstalls.byExtension[0]?.[0] || 'Workdrive'} accounts for{' '}
-                {Math.round(((data.uninstalls.byExtension[0]?.[1] || 0) / data.summary.uninstalls) * 100)}% of uninstalls.
+                {data.cancellations.byExtension[0]?.[0] || 'Workdrive'} accounts for{' '}
+                {Math.round(((data.cancellations.byExtension[0]?.[1] || 0) / data.summary.cancellations) * 100)}% of cancellations.
                 Focus retention efforts here.
               </p>
             </div>
@@ -558,18 +529,21 @@ export default function ChurnMetrics() {
             </div>
           </div>
         )}
-        </div>
       </div>
+    </div>
 
-      {/* Extension Analysis Section - Completely Separate */}
-      <div className="bg-white rounded-lg shadow border border-purple-200">
-        <div className="p-4 border-b border-purple-200 bg-purple-50">
-          <div className="flex flex-wrap items-center gap-4">
-            <h3 className="text-lg font-semibold text-purple-900">Extension Analysis</h3>
-            <div className="flex items-center gap-2 pl-4 border-l border-purple-300">
-              <span className="text-sm font-semibold text-purple-800">Extension:</span>
-              <select
-                value={selectedExtension}
+    {/* Extension Analysis Section */}
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="px-6 py-4 border-b border-slate-100">
+        <h2 className="text-base font-semibold text-slate-900">Extension Analysis</h2>
+        <p className="text-sm text-slate-500 mt-0.5">Install, purchase, and cancellation trends by extension</p>
+      </div>
+      <div className="p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600">Extension:</span>
+            <select
+              value={selectedExtension}
                 onChange={(e) => {
                   if (e.target.value) {
                     setSelectedExtension(e.target.value);
@@ -616,7 +590,7 @@ export default function ChurnMetrics() {
             <div className="flex items-center gap-2 pl-4 border-l border-purple-300">
               <span className="text-sm font-semibold text-purple-800">Metric:</span>
               <div className="flex rounded-lg overflow-hidden border border-purple-300">
-                {(['all', 'uninstalls', 'paymentFailures', 'purchases', 'installs'] as const).map((m) => (
+                {(['all', 'cancellations', 'paymentFailures', 'purchases', 'installs'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => setExtensionMetric(m)}
@@ -624,7 +598,7 @@ export default function ChurnMetrics() {
                       extensionMetric === m ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                     }`}
                   >
-                    {m === 'all' ? 'All' : m === 'paymentFailures' ? 'Failures' : m === 'uninstalls' ? 'Uninstalls' : m === 'installs' ? 'Installs' : 'Purchases'}
+                    {m === 'all' ? 'All' : m === 'paymentFailures' ? 'Failures' : m === 'cancellations' ? 'Cancellations' : m === 'installs' ? 'Installs' : 'Purchases'}
                   </button>
                 ))}
               </div>
@@ -669,7 +643,7 @@ export default function ChurnMetrics() {
                 <span className="h-5 w-px bg-gray-300"></span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500"></span><span className="text-green-600">Purchases:</span> <strong className="text-green-700">{data?.purchases.byExtension.find(([e]) => e === selectedExtension)?.[1] || 0}</strong></span>
                 <span className="h-5 w-px bg-gray-300"></span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span><span className="text-red-600">Uninstalls:</span> <strong className="text-red-700">{data?.uninstalls.byExtension.find(([e]) => e === selectedExtension)?.[1] || 0}</strong></span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span><span className="text-red-600">Cancellations:</span> <strong className="text-red-700">{data?.cancellations.byExtension.find(([e]) => e === selectedExtension)?.[1] || 0}</strong></span>
                 <span className="h-5 w-px bg-gray-300"></span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span className="text-amber-600">Failures:</span> <strong className="text-amber-700">{data?.paymentFailures.byExtension.find(([e]) => e === selectedExtension)?.[1] || 0}</strong></span>
               </div>
@@ -690,8 +664,8 @@ export default function ChurnMetrics() {
                     {(extensionMetric === 'all' || extensionMetric === 'purchases') && (
                       <Bar dataKey="purchases" name="Purchases" fill="#10B981" />
                     )}
-                    {(extensionMetric === 'all' || extensionMetric === 'uninstalls') && (
-                      <Bar dataKey="uninstalls" name="Uninstalls" fill="#EF4444" />
+                    {(extensionMetric === 'all' || extensionMetric === 'cancellations') && (
+                      <Bar dataKey="cancellations" name="Cancellations" fill="#EF4444" />
                     )}
                     {(extensionMetric === 'all' || extensionMetric === 'paymentFailures') && (
                       <Bar dataKey="paymentFailures" name="Payment Failures" fill="#F59E0B" />
@@ -712,8 +686,8 @@ export default function ChurnMetrics() {
                     {(extensionMetric === 'all' || extensionMetric === 'purchases') && (
                       <Bar dataKey="purchases" name="Purchases" fill="#10B981" />
                     )}
-                    {(extensionMetric === 'all' || extensionMetric === 'uninstalls') && (
-                      <Bar dataKey="uninstalls" name="Uninstalls" fill="#EF4444" />
+                    {(extensionMetric === 'all' || extensionMetric === 'cancellations') && (
+                      <Bar dataKey="cancellations" name="Cancellations" fill="#EF4444" />
                     )}
                     {(extensionMetric === 'all' || extensionMetric === 'paymentFailures') && (
                       <Bar dataKey="paymentFailures" name="Payment Failures" fill="#F59E0B" />
@@ -737,7 +711,7 @@ export default function ChurnMetrics() {
                   <Legend wrapperStyle={{ paddingTop: '10px' }} />
                   <Bar dataKey="installs" name="Installs" fill="#3B82F6" />
                   <Bar dataKey="purchases" name="Purchases" fill="#10B981" />
-                  <Bar dataKey="uninstalls" name="Uninstalls" fill="#EF4444" />
+                  <Bar dataKey="cancellations" name="Cancellations" fill="#EF4444" />
                   <Bar dataKey="paymentFailures" name="Payment Failures" fill="#F59E0B" />
                 </BarChart>
               </ResponsiveContainer>
@@ -757,7 +731,7 @@ export default function ChurnMetrics() {
                             <p className="font-semibold text-gray-900">{monthName}</p>
                             <p className="text-blue-600">Installs: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'installs')?.value)}</span></p>
                             <p className="text-green-600">Purchases: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'purchases')?.value)}</span></p>
-                            <p className="text-red-600">Uninstalls: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'uninstalls')?.value)}</span></p>
+                            <p className="text-red-600">Cancellations: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'cancellations')?.value)}</span></p>
                             <p className="text-amber-600">Payment Failures: <span className="font-medium">{(payload.find((p: any) => p.dataKey === 'paymentFailures')?.value)}</span></p>
                           </div>
                         );
@@ -768,7 +742,7 @@ export default function ChurnMetrics() {
                   <Legend wrapperStyle={{ paddingTop: '10px' }} />
                   <Bar dataKey="installs" name="Installs" fill="#3B82F6" />
                   <Bar dataKey="purchases" name="Purchases" fill="#10B981" />
-                  <Bar dataKey="uninstalls" name="Uninstalls" fill="#EF4444" />
+                  <Bar dataKey="cancellations" name="Cancellations" fill="#EF4444" />
                   <Bar dataKey="paymentFailures" name="Payment Failures" fill="#F59E0B" />
                 </BarChart>
               </ResponsiveContainer>
@@ -777,6 +751,6 @@ export default function ChurnMetrics() {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
