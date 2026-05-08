@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/adapters/sqlite';
-import fs from 'fs';
-import path from 'path';
-import Papa from 'papaparse';
 
 type ForecastMethod = 'trend' | 'moving_avg' | 'growth_rate';
 type ForecastScope = 'all' | '12m';
@@ -14,20 +11,6 @@ interface MonthlyRow {
   count: number;
   service?: number;
   product?: number;
-}
-
-function linearRegression(values: number[]): { slope: number; intercept: number } {
-  const n = values.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (let i = 0; i < n; i++) {
-    sumX += i;
-    sumY += values[i];
-    sumXY += i * values[i];
-    sumX2 += i * i;
-  }
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-  return { slope, intercept };
 }
 
 function computeForecast(
@@ -92,8 +75,8 @@ function computeForecast(
   } else if (method === 'moving_avg') {
     if (scope === '12m') {
       // Rolling 12-month SMA
-      let tempService = [...svcData];
-      let tempProduct = [...pdtData];
+      const tempService = [...svcData];
+      const tempProduct = [...pdtData];
       for (let i = 1; i <= 12; i++) {
         const d = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1);
         const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;

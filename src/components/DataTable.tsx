@@ -10,11 +10,9 @@ interface DataTableProps {
   exchangeRates?: Record<string, number>;
 }
 
-const SERVICE_COLUMNS = ['Date', 'Customer', 'Description', 'Amount', 'Currency', 'Status', 'Source'];
-const PRODUCT_COLUMNS = ['Date', 'Customer', 'Description', 'Amount', 'Currency', 'Status', 'Source'];
+const COLUMNS = ['Date', 'Customer', 'Description', 'Amount', 'Currency', 'Status', 'Source'];
 
 export default function DataTable({ records, type, convertToUsd = false, exchangeRates = DEFAULT_EXCHANGE_RATES }: DataTableProps) {
-  const columns = type === 'product' ? PRODUCT_COLUMNS : SERVICE_COLUMNS;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -44,7 +42,7 @@ export default function DataTable({ records, type, convertToUsd = false, exchang
         </caption>
         <thead className="bg-slate-50">
           <tr>
-            {columns.map((col) => (
+            {COLUMNS.map((col) => (
               <th
                 key={col}
                 scope="col"
@@ -56,7 +54,7 @@ export default function DataTable({ records, type, convertToUsd = false, exchang
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-slate-100">
-          {records.map((record, idx) => (
+          {records.map((record) => (
             <tr key={record.id} className="hover:bg-slate-50 focus-within:bg-blue-50">
               <th scope="row" className="px-4 py-2 whitespace-nowrap text-sm font-normal text-slate-900">
                 {formatDate(record.date)}

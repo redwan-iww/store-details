@@ -37,12 +37,6 @@ export function convertToUSD(amount: number, currency: string, rates?: Record<st
   return amount / rate;
 }
 
-export function convertFromUSD(usdAmount: number, targetCurrency: string, rates?: Record<string, number>): number {
-  const rate = rates?.[targetCurrency] ?? DEFAULT_EXCHANGE_RATES[targetCurrency] ?? 1;
-  if (targetCurrency === 'USD') return usdAmount;
-  return usdAmount * rate;
-}
-
 export function formatCurrency(value: number, currency: string, convertToUsd = false, rates?: Record<string, number>): string {
   const displayValue = convertToUsd ? convertToUSD(value, currency, rates) : value;
   const displayCurrency = convertToUsd ? 'USD' : currency;
@@ -58,40 +52,14 @@ export function formatCurrency(value: number, currency: string, convertToUsd = f
   }
 }
 
-export function formatCurrencyExact(value: number, currency: string, convertToUsd = false, rates?: Record<string, number>): string {
-  const displayValue = convertToUsd ? convertToUSD(value, currency, rates) : value;
-  const displayCurrency = convertToUsd ? 'USD' : currency;
-  const locale = CURRENCY_LOCALES[displayCurrency] || 'en-US';
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(displayValue);
-  } catch {
-    return `${CURRENCY_SYMBOLS[displayCurrency] || displayCurrency}${displayValue.toLocaleString()}`;
-  }
-}
-
 export function getCurrencySymbol(currency: string): string {
   return CURRENCY_SYMBOLS[currency] || currency;
-}
-
-export function getCurrencyLocale(currency: string): string {
-  return CURRENCY_LOCALES[currency] || 'en-US';
 }
 
 export interface CurrencyBreakdown {
   currency: string;
   amount: number;
   count: number;
-}
-
-export function getTotalInUSD(breakdown: CurrencyBreakdown[], rates?: Record<string, number>): number {
-  return breakdown.reduce((sum, c) => {
-    return sum + convertToUSD(c.amount, c.currency, rates);
-  }, 0);
 }
 
 export function getExchangeRateLabel(currency: string, rates?: Record<string, number>): string {

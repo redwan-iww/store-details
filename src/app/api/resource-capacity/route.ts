@@ -15,13 +15,6 @@ interface WorkloadItem {
   customerCount: number;
 }
 
-interface CapacityMetric {
-  month: string;
-  newInstalls: number;
-  activeUsers: number;
-  trialUsers: number;
-}
-
 interface SubscriptionTrend {
   month: string;
   activeSubscriptions: number;

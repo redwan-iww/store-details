@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import HomeContent from '@/components/HomeContent';
-import type { RecordType } from '@/lib/types';
 
 function DataPageContent() {
   const searchParams = useSearchParams();

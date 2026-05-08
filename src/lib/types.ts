@@ -46,13 +46,7 @@ export interface DataResponse {
   };
 }
 
-export interface UploadResponse {
-  source: string;
-  inserted: number;
-  skipped: number;
-}
-
-export interface CSVConfigEntry {
+interface CSVConfigEntry {
   type: RecordType;
   idField?: string;
   idFields?: string[];

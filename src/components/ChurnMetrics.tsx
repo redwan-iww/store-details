@@ -12,9 +12,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Cell,
-  ReferenceLine,
-  Label,
 } from 'recharts';
 
 interface ChurnMetricsData {
@@ -31,6 +28,10 @@ interface ChurnMetricsData {
     byExtension: [string, number][];
     byExtensionMonthly: Record<string, Record<string, number>>;
     byExtensionYearly: Record<string, Record<string, number>>;
+    bySource: {
+      extension: number;
+      subscription: number;
+    };
   };
   paymentFailures: {
     monthly: [string, number][];
@@ -55,17 +56,7 @@ interface ChurnMetricsData {
   };
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#84CC16'];
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const FULL_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-const formatMonth = (month: string) => {
-  if (!month || month.length < 7) return month;
-  const [y, m] = month.split('-');
-  const monthIdx = parseInt(m) - 1;
-  return `${MONTH_NAMES[monthIdx]} ${y.slice(2)}`;
-};
 
 // Simplify extension names for better readability
 const simplifyExtName = (name: string): string => {
@@ -90,7 +81,6 @@ export default function ChurnMetrics() {
   const [extensionViewMode, setExtensionViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [extensionYear, setExtensionYear] = useState<number>(2026);
-  const [showProjection, setShowProjection] = useState<boolean>(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -116,10 +106,6 @@ export default function ChurnMetrics() {
 
   const prepareChartData = (metric: keyof ChurnMetricsData | 'all', year: number) => {
     if (!data) return null;
-    const CURRENT_MONTH = 6;
-    const CURRENT_YEAR = 2026;
-    const currentMonth = CURRENT_MONTH;
-    const isCurrentYear = year === CURRENT_YEAR;
 
     const availableYears = [...new Set([
       ...data.cancellations.yearly.map(([y]) => parseInt(y)),
@@ -128,23 +114,11 @@ export default function ChurnMetrics() {
       ...data.installs.yearly.map(([y]) => parseInt(y)),
     ])].sort((a, b) => b - a);
 
-    const firstInstallMonth = data.installs.monthly.find(([m, v]) => v > 0)?.[0] || '';
+    const firstInstallMonth = data.installs.monthly.find(([, v]) => v > 0)?.[0] || '';
     const [firstInstallYear] = firstInstallMonth.split('-').map(Number);
     const minYear = firstInstallYear || availableYears[availableYears.length - 1] || 2025;
     const maxYear = availableYears[0] || 2026;
     const firstInstallMonthNum = firstInstallMonth ? parseInt(firstInstallMonth.split('-')[1]) : 1;
-
-    const calcAverage = (d: [string, number][]) => {
-      const yearData = d.filter(([m]) => m.startsWith(year.toString()) && parseInt(m.split('-')[1]) < currentMonth);
-      if (yearData.length === 0) return 0;
-      const sum = yearData.reduce((acc, [, v]) => acc + v, 0);
-      return Math.round(sum / yearData.length);
-    };
-
-    const avgUninstalls = calcAverage(data.cancellations.monthly);
-    const avgFailures = calcAverage(data.paymentFailures.monthly);
-    const avgPurchases = calcAverage(data.purchases.monthly);
-    const avgInstalls = calcAverage(data.installs.monthly);
 
     if (viewMode === 'monthly') {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -244,13 +218,14 @@ export default function ChurnMetrics() {
       }));
     }
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const firstInstallMonth = data.installs.monthly.find(([m, v]) => v > 0)?.[0] || '';
-    const [firstInstallYear] = firstInstallMonth.split('-').map(Number);
-    const firstInstallMonthNum = firstInstallMonth ? parseInt(firstInstallMonth.split('-')[1]) : 1;
+    const extMonthlyInstalls = data.installs.byExtensionMonthly[selectedExtension] || {};
+    const extFirstInstallMonth = Object.entries(extMonthlyInstalls).find(([, v]) => v > 0)?.[0] || '';
+    const [extFirstInstallYear] = extFirstInstallMonth ? extFirstInstallMonth.split('-').map(Number) : [extensionYear];
+    const extFirstInstallMonthNum = extFirstInstallMonth ? parseInt(extFirstInstallMonth.split('-')[1]) : 1;
     return monthNames.map((monthName, index) => {
       const monthNum = index + 1;
       const monthStr = `${extensionYear}-${String(monthNum).padStart(2, '0')}`;
-      const isBeforeFirstInstall = extensionYear < firstInstallYear || (extensionYear === firstInstallYear && monthNum < firstInstallMonthNum);
+      const isBeforeFirstInstall = extensionYear < extFirstInstallYear || (extensionYear === extFirstInstallYear && monthNum < extFirstInstallMonthNum);
       return {
         name: monthName,
         installs: isBeforeFirstInstall ? null : (data.installs.byExtensionMonthly[selectedExtension]?.[monthStr] || 0),
@@ -278,7 +253,7 @@ export default function ChurnMetrics() {
       }));
     }
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const firstInstallMonth = data.installs.monthly.find(([m, v]) => v > 0)?.[0] || '';
+    const firstInstallMonth = data.installs.monthly.find(([, v]) => v > 0)?.[0] || '';
     const [firstInstallYear] = firstInstallMonth.split('-').map(Number);
     const firstInstallMonthNum = firstInstallMonth ? parseInt(firstInstallMonth.split('-')[1]) : 1;
     return monthNames.map((monthName, index) => {
@@ -297,7 +272,6 @@ export default function ChurnMetrics() {
       };
     });
   }, [data, extensionYear, extensionViewMode]);
-  const isCurrentYear = selectedYear === 2026;
 
   if (loading) {
     return (
@@ -333,7 +307,7 @@ export default function ChurnMetrics() {
     ...data.installs.yearly.map(([y]) => parseInt(y)),
   ])].sort((a, b) => b - a);
 
-  const firstInstallMonth = data.installs.monthly.find(([m, v]) => v > 0)?.[0] || '';
+  const firstInstallMonth = data.installs.monthly.find(([, v]) => v > 0)?.[0] || '';
   const [firstInstallYear] = firstInstallMonth.split('-').map(Number);
   const minYear = firstInstallYear || availableYears[availableYears.length - 1] || 2025;
   const maxYear = availableYears[0] || 2026;
@@ -518,6 +492,9 @@ export default function ChurnMetrics() {
                 {data.cancellations.byExtension[0]?.[0] || 'Workdrive'} accounts for{' '}
                 {Math.round(((data.cancellations.byExtension[0]?.[1] || 0) / data.summary.cancellations) * 100)}% of cancellations.
                 Focus retention efforts here.
+              </p>
+              <p className="text-xs text-red-600 mt-2">
+                Source: {data.cancellations.bySource.extension} from extension uninstalls, {data.cancellations.bySource.subscription} from subscription cancellations.
               </p>
             </div>
             <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">

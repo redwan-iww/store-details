@@ -4,14 +4,10 @@ import { upsertTransaction } from '../db';
 import { CSV_CONFIG, type CSVSource, type TransactionInput } from '../types';
 
 function generateId(source: CSVSource, row: Record<string, string>): string {
-  const config = CSV_CONFIG[source];
-
-  // Extension_Users uses composite key
   if (source === 'Extension_Users') {
     return `${row['Extension User Owner.id'] || ''}|${row['First Install Date'] || ''}`;
   }
 
-  // Others use single idField
   const idFieldMap: Record<string, string> = {
     Books_Invoice: 'Invoice Number',
     Store_Subscriptions: 'Subscription ID',
@@ -27,7 +23,6 @@ function extractDate(source: CSVSource, row: Record<string, string>): string {
   const config = CSV_CONFIG[source];
   const dateStr = row[config.dateField] || '';
 
-  // Parse various date formats
   const parsed = new Date(dateStr);
   if (isNaN(parsed.getTime())) return '';
 
@@ -88,26 +83,50 @@ export function parseCSV(source: CSVSource, csvContent: string): { inserted: num
   let inserted = 0;
   let skipped = 0;
 
+const DEMO_CUSTOMER_PATTERNS = [
+  'instawebworks.com.au',
+  'instawebworkscom',
+];
+
+function isDemoData(row: Record<string, string>): boolean {
+  const checkFields = [
+    row['Email'],
+    row['Email ID'],
+    row['Secondary Email'],
+    row['Customer Company Name'],
+    row['Customer Name'],
+    row['Billing Address Email'],
+    row['Contact Email'],
+    row['customer_email'],
+    row['org_name'],
+    row['customer_company_name'],
+  ];
+
+  for (const value of checkFields) {
+    if (typeof value !== 'string') continue;
+    const lower = value.toLowerCase();
+    for (const pattern of DEMO_CUSTOMER_PATTERNS) {
+      if (lower.includes(pattern)) return true;
+    }
+  }
+  return false;
+}
+
   for (const row of records.data) {
     // Skip test data (instawebworks.com.au domain)
-    if (source === 'Extension_Users') {
-      const email = row['Email'] || '';
-      const secondaryEmail = row['Secondary Email'] || '';
-      if (email.includes('instawebworks.com.au') || secondaryEmail.includes('instawebworks.com.au')) {
-        skipped++;
-        continue;
-      }
+    if (isDemoData(row)) {
+      skipped++;
+      continue;
     }
 
-    // Check if this row belongs to a different source based on Business Category
-    let effectiveSource = source;
+    // Skip zoho subscriptions — commission data already in Store_Commissions.csv
     if (source === 'Store_Subscriptions' && row['Business Category'] === 'zoho') {
-      effectiveSource = 'Store_Commissions';
+      skipped++;
+      continue;
     }
 
-    const effectiveConfig = CSV_CONFIG[effectiveSource];
-    const id = generateId(effectiveSource, row);
-    const date = extractDate(effectiveSource, row);
+    const id = generateId(source, row);
+    const date = extractDate(source, row);
 
     if (!id || !date) {
       skipped++;
@@ -116,15 +135,15 @@ export function parseCSV(source: CSVSource, csvContent: string): { inserted: num
 
     const input: TransactionInput = {
       id,
-      type: effectiveConfig.type,
-      source_file: effectiveSource,
+      type: config.type,
+      source_file: source,
       date,
       month: extractMonth(date),
-      customer: extractCustomer(effectiveSource, row),
-      description: extractDescription(effectiveSource, row),
-      amount: extractAmount(effectiveSource, row),
-      currency: extractCurrency(effectiveSource, row),
-      status: extractStatus(effectiveSource, row),
+      customer: extractCustomer(source, row),
+      description: extractDescription(source, row),
+      amount: extractAmount(source, row),
+      currency: extractCurrency(source, row),
+      status: extractStatus(source, row),
       raw_data: row,
     };
 

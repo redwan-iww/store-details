@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatCurrency, DEFAULT_EXCHANGE_RATES, type CurrencyBreakdown } from '@/lib/currency';
+import { DEFAULT_EXCHANGE_RATES, type CurrencyBreakdown } from '@/lib/currency';
 import { CurrencyBreakdownList, CurrencyConverterToggle, ExchangeRateModal } from '@/components/CurrencyUI';
 
 interface WorkloadItem {

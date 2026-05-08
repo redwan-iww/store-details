@@ -284,6 +284,10 @@ export async function GET() {
       byExtension: Object.entries(cancelByExt).sort((a, b) => b[1] - a[1]),
       byExtensionMonthly: cancelByExtMonth,
       byExtensionYearly: cancelByExtYear,
+      bySource: {
+        extension: extCancelRows.length,
+        subscription: txnCancelRows.length,
+      },
     },
     paymentFailures: {
       monthly: Object.entries(failureByMonth).sort((a, b) => a[0].localeCompare(b[0])),

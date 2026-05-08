@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import FilterBar from '@/components/FilterBar';
 import DataTable from '@/components/DataTable';
 import { CurrencyConverterToggle, ExchangeRateModal } from '@/components/CurrencyUI';
 import { formatCurrency, DEFAULT_EXCHANGE_RATES } from '@/lib/currency';
-import type { RecordType } from '@/lib/types';
 import type { Transaction } from '@/lib/types';
 
 interface HomeContentProps {

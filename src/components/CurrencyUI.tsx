@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { DEFAULT_EXCHANGE_RATES, getExchangeRateLabel, formatCurrency, type CurrencyBreakdown } from '@/lib/currency';
+import { DEFAULT_EXCHANGE_RATES, formatCurrency, type CurrencyBreakdown } from '@/lib/currency';
 
 export function CurrencyConverterToggle({ enabled, onToggle }: {
   enabled: boolean;
@@ -106,40 +105,6 @@ export function ExchangeRateModal({ rates, onRatesChange, currencies, open, onCl
             </button>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-export function ExchangeRateInfo({ currencies, rates, compact = false }: {
-  currencies: string[];
-  rates?: Record<string, number>;
-  compact?: boolean;
-}) {
-  const nonUsdCurrencies = currencies.filter(c => c !== 'USD');
-  if (nonUsdCurrencies.length === 0) return null;
-
-  if (compact) {
-    return (
-      <div className="flex flex-wrap gap-2 mt-2">
-        {nonUsdCurrencies.map(c => (
-          <span key={c} className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded" title={getExchangeRateLabel(c, rates)}>
-            {c}
-          </span>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-      <p className="text-sm font-semibold text-gray-800 mb-2">Exchange Rates (per 1 USD)</p>
-      <div className="flex flex-wrap gap-x-6 gap-y-2">
-        {nonUsdCurrencies.map(c => (
-          <span key={c} className="text-sm font-medium text-gray-700">
-            {getExchangeRateLabel(c, rates)}
-          </span>
-        ))}
       </div>
     </div>
   );

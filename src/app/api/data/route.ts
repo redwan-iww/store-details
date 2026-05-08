@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTransactions } from '@/lib/db';
-import type { DataFilters, RecordType } from '@/lib/types';
+import type { DataFilters } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

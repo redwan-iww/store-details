@@ -129,10 +129,3 @@ export function getMonths(): string[] {
   const rows = database.prepare(`SELECT DISTINCT month FROM transactions ORDER BY month DESC`).all() as { month: string }[];
   return rows.map(r => r.month);
 }
-
-export function closeDb(): void {
-  if (db) {
-    db.close();
-    db = null;
-  }
-}
